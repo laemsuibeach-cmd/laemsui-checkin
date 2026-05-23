@@ -102,7 +102,7 @@ export default function SignPage() {
       )
 
       // เก็บ signed PDF ใน sessionStorage
-      const signedBase64 = btoa(String.fromCharCode(...signedPdfBytes))
+      const signedBase64 = btoa(String.fromCharCode(...Array.from(signedPdfBytes)))
       sessionStorage.setItem(`pdf_signed_${ref}`, signedBase64)
       sessionStorage.setItem(`signature_${ref}`, signatureDataUrl)
 
