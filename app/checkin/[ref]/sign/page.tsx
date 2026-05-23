@@ -102,7 +102,12 @@ export default function SignPage() {
       )
 
       // เก็บ signed PDF ใน sessionStorage
-      const signedBase64 = btoa(String.fromCharCode(...Array.from(signedPdfBytes)))
+      // Chunked base64 to avoid stack overflow on large PDFs
+      let signedBinary = ''
+      for (let i = 0; i < signedPdfBytes.length; i += 8192) {
+        signedBinary += String.fromCharCode(...Array.from(signedPdfBytes.subarray(i, i + 8192)))
+      }
+      const signedBase64 = btoa(signedBinary)
       sessionStorage.setItem(`pdf_signed_${ref}`, signedBase64)
       sessionStorage.setItem(`signature_${ref}`, signatureDataUrl)
 

@@ -46,7 +46,13 @@ export default function UploadFormPage() {
     try {
       // แปลง PDF เป็น ArrayBuffer แล้วเก็บใน sessionStorage ชั่วคราว
       const arrayBuffer = await readPdfFile(pdfFile)
-      const base64 = btoa(String.fromCharCode(...Array.from(new Uint8Array(arrayBuffer))))
+      // Chunked base64 to avoid stack overflow on large PDFs
+      const bytes = new Uint8Array(arrayBuffer)
+      let binary = ''
+      for (let i = 0; i < bytes.length; i += 8192) {
+        binary += String.fromCharCode(...Array.from(bytes.subarray(i, i + 8192)))
+      }
+      const base64 = btoa(binary)
       sessionStorage.setItem(`pdf_original_${ref}`, base64)
       sessionStorage.setItem(`pdf_filename_${ref}`, pdfFile.name)
 
