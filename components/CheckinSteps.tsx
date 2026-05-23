@@ -3,11 +3,10 @@
 type Step = { id: number; label: string; icon: string }
 
 const STEPS: Step[] = [
-  { id: 1, label: 'อัปโหลด Form',  icon: '📄' },
-  { id: 2, label: 'เซ็นชื่อ',       icon: '✍️' },
-  { id: 3, label: 'ถ่าย Passport', icon: '📷' },
-  { id: 4, label: 'ถ่าย ID Card',  icon: '🪪' },
-  { id: 5, label: 'ยืนยัน',         icon: '✅' },
+  { id: 1, label: 'อัปโหลด Form', icon: '📄' },
+  { id: 2, label: 'เซ็นชื่อ',     icon: '✍️' },
+  { id: 3, label: 'ถ่ายเอกสาร', icon: '📷' },
+  { id: 4, label: 'ยืนยัน',       icon: '✅' },
 ]
 
 export default function CheckinSteps({ current }: { current: number }) {

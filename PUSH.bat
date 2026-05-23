@@ -13,7 +13,7 @@ if "%TOKEN%"=="" (
 
 if exist ".git\index.lock" del /f ".git\index.lock"
 git add -A
-git diff --staged --quiet && (echo Nothing to commit) || git commit -m "fix: auto-create staff record to resolve upload FK error"
+git diff --staged --quiet && (echo Nothing to commit) || git commit -m "fix: switch to Supabase Storage, fix staff FK, ensure-staff API"
 
 git push https://laemsuibeach-cmd:%TOKEN%@github.com/laemsuibeach-cmd/laemsui-checkin.git main --force
 

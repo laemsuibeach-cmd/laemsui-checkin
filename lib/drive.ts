@@ -1,14 +1,18 @@
+/**
+ * drive.ts — now uses Supabase Storage instead of Google Drive
+ * Bucket: guest-documents (private, authenticated access only)
+ * Path:   {year}/{month-shortname}/{bookingRef}/{filename}
+ */
 import { createClient } from './supabase'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const BUCKET = 'guest-documents'
 
-// แปลง File/Blob เป็น base64 string
+// แปลง File/Blob เป็น base64 string (ยังคงใช้ใน sign page)
 export async function fileToBase64(file: File | Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {
       const result = reader.result as string
-      // ตัด "data:...;base64," prefix ออก
       resolve(result.split(',')[1])
     }
     reader.onerror = reject
@@ -16,124 +20,137 @@ export async function fileToBase64(file: File | Blob): Promise<string> {
   })
 }
 
-// สร้าง folder structure ใน Google Drive
-export async function createDriveFolder(bookingRef: string, checkIn: string) {
-  const supabase = createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/drive-create-folder`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session?.access_token}`,
-    },
-    body: JSON.stringify({ bookingRef, checkIn }),
-  })
-
-  if (!response.ok) {
-    const err = await response.json()
-    throw new Error(err.error || 'Failed to create Drive folder')
-  }
-
-  return response.json() as Promise<{ folderId: string; folderUrl: string }>
+// สร้าง path prefix สำหรับ booking นี้
+function storagePath(checkIn: string, bookingRef: string, filename: string): string {
+  const year  = checkIn.slice(0, 4)
+  const month = new Date(checkIn).toLocaleString('en', { month: 'short' }).toUpperCase()
+  return `${year}/${month}/${bookingRef}/${filename}`
 }
 
-// อัปโหลดไฟล์เดี่ยวเข้า Google Drive
-export async function uploadToDrive(
-  folderId: string,
-  fileName: string,
+// อัปโหลดไฟล์เดี่ยวเข้า Supabase Storage
+export async function uploadToStorage(
+  path: string,
   file: File | Blob,
   mimeType: string
-) {
+): Promise<{ path: string; url: string }> {
   const supabase = createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  const fileBase64 = await fileToBase64(file)
 
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/drive-upload`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session?.access_token}`,
-    },
-    body: JSON.stringify({ folderId, fileName, fileBase64, mimeType }),
-  })
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, file, {
+      contentType: mimeType,
+      upsert: true,
+    })
 
-  if (!response.ok) {
-    const err = await response.json()
-    throw new Error(err.error || 'Failed to upload to Drive')
+  if (error) throw new Error(`Storage upload failed: ${error.message}`)
+
+  // สร้าง signed URL อายุ 7 วัน (สำหรับ private bucket)
+  const { data: signedData, error: signErr } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(path, 60 * 60 * 24 * 7)
+
+  if (signErr || !signedData?.signedUrl) {
+    // Fallback: return path only
+    return { path, url: '' }
   }
 
-  return response.json() as Promise<{
-    fileId: string
-    fileName: string
-    webViewLink: string
-    size: string
-  }>
+  return { path, url: signedData.signedUrl }
 }
 
-// อัปโหลดทุกไฟล์ของ guest record พร้อมกัน
+// อัปโหลดทุกไฟล์ของ guest record
 export async function finalizeGuestRecord(params: {
   bookingRef: string
   checkIn: string
   registrationPdf: Blob
   signedPdf: Blob
-  passportPhoto: File
-  idcardPhoto: File
+  passportPhoto?: File
+  idcardPhoto?: File
   guestName: string
   staffName: string
-}) {
-  // Step 1: สร้าง folder
-  const { folderId, folderUrl } = await createDriveFolder(
-    params.bookingRef,
-    params.checkIn
+}): Promise<{
+  folderId: string
+  folderUrl: string
+  files: {
+    registrationFileId: string | null
+    signedRegistrationFileId: string | null
+    passportFileId: string | null
+    idcardFileId: string | null
+    metadataFileId: string | null
+  }
+}> {
+  const { bookingRef, checkIn } = params
+
+  // Upload registration PDF
+  const reg = await uploadToStorage(
+    storagePath(checkIn, bookingRef, 'registration.pdf'),
+    params.registrationPdf,
+    'application/pdf'
   )
 
-  // Step 2: อัปโหลดทุกไฟล์ (sequential เพื่อป้องกัน rate limit)
-  const registration = await uploadToDrive(
-    folderId, 'registration.pdf', params.registrationPdf, 'application/pdf'
-  )
-  const signed = await uploadToDrive(
-    folderId, 'signed-registration.pdf', params.signedPdf, 'application/pdf'
-  )
-  const passport = await uploadToDrive(
-    folderId, 'passport.jpg', params.passportPhoto, 'image/jpeg'
-  )
-  const idcard = await uploadToDrive(
-    folderId, 'idcard.jpg', params.idcardPhoto, 'image/jpeg'
+  // Upload signed PDF
+  const signed = await uploadToStorage(
+    storagePath(checkIn, bookingRef, 'signed-registration.pdf'),
+    params.signedPdf,
+    'application/pdf'
   )
 
-  // Step 3: สร้าง metadata.json
+  // Upload passport (if any)
+  const passport = params.passportPhoto
+    ? await uploadToStorage(
+        storagePath(checkIn, bookingRef, 'passport.jpg'),
+        params.passportPhoto,
+        'image/jpeg'
+      )
+    : null
+
+  // Upload ID card (if any)
+  const idcard = params.idcardPhoto
+    ? await uploadToStorage(
+        storagePath(checkIn, bookingRef, 'idcard.jpg'),
+        params.idcardPhoto,
+        'image/jpeg'
+      )
+    : null
+
+  // Upload metadata.json
   const metadata = {
-    bookingRef: params.bookingRef,
+    bookingRef,
     guestName: params.guestName,
-    checkIn: params.checkIn,
+    checkIn,
     staffName: params.staffName,
     uploadedAt: new Date().toISOString(),
+    storage: 'supabase',
+    bucket: BUCKET,
     files: {
-      registration: { fileId: registration.fileId },
-      signedRegistration: { fileId: signed.fileId },
-      passport: { fileId: passport.fileId },
-      idcard: { fileId: idcard.fileId },
+      registration:      reg.path,
+      signedRegistration: signed.path,
+      passport:          passport?.path ?? null,
+      idcard:            idcard?.path   ?? null,
     },
     system: 'Laemsui Resort Check-in v1.0',
   }
 
-  const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], {
-    type: 'application/json',
-  })
-  const metadataFile = await uploadToDrive(
-    folderId, 'metadata.json', metadataBlob, 'application/json'
+  const metaBlob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' })
+  const meta = await uploadToStorage(
+    storagePath(checkIn, bookingRef, 'metadata.json'),
+    metaBlob,
+    'application/json'
   )
 
+  // folderUrl = signed URL ของ signed PDF (สิ่งที่พนักงานอยากดูบ่อยที่สุด)
+  const year  = checkIn.slice(0, 4)
+  const month = new Date(checkIn).toLocaleString('en', { month: 'short' }).toUpperCase()
+  const folderPath = `${year}/${month}/${bookingRef}`
+
   return {
-    folderId,
-    folderUrl,
+    folderId:  folderPath,
+    folderUrl: signed.url || reg.url,   // signed URL ของ PDF ที่เซ็นแล้ว
     files: {
-      registrationFileId: registration.fileId,
-      signedRegistrationFileId: signed.fileId,
-      passportFileId: passport.fileId,
-      idcardFileId: idcard.fileId,
-      metadataFileId: metadataFile.fileId,
+      registrationFileId:        reg.path,
+      signedRegistrationFileId:  signed.path,
+      passportFileId:            passport?.path  ?? null,
+      idcardFileId:              idcard?.path    ?? null,
+      metadataFileId:            meta.path,
     },
   }
 }

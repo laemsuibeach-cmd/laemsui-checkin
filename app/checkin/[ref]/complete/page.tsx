@@ -11,7 +11,7 @@ import { CheckCircle, ExternalLink, Home, AlertCircle, Upload } from 'lucide-rea
 
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error'
 
-// Step 5: ยืนยัน + Upload ทุกอย่างขึ้น Google Drive
+// Step 4: ยืนยัน + Upload ทุกอย่างขึ้น Google Drive
 export default function CompletePage() {
   const { ref } = useParams<{ ref: string }>()
   const router = useRouter()
@@ -26,7 +26,8 @@ export default function CompletePage() {
   const hasSigned   = !!sessionStorage.getItem(`pdf_signed_${ref}`)
   const hasPassport = !!sessionStorage.getItem(`passport_${ref}`)
   const hasIdcard   = !!sessionStorage.getItem(`idcard_${ref}`)
-  const allReady = hasPdf && hasSigned && hasPassport && hasIdcard
+  const hasDoc      = hasPassport || hasIdcard
+  const allReady    = hasPdf && hasSigned && hasDoc
 
   useEffect(() => { loadBooking() }, [ref])
 
@@ -55,16 +56,15 @@ export default function CompletePage() {
     try {
       setProgress('กำลังสร้าง folder ใน Google Drive...')
 
-      // ดึงไฟล์จาก sessionStorage
       const originalBase64 = sessionStorage.getItem(`pdf_original_${ref}`)!
       const signedBase64   = sessionStorage.getItem(`pdf_signed_${ref}`)!
-      const passportBase64 = sessionStorage.getItem(`passport_${ref}`)!
-      const idcardBase64   = sessionStorage.getItem(`idcard_${ref}`)!
+      const passportBase64 = sessionStorage.getItem(`passport_${ref}`)
+      const idcardBase64   = sessionStorage.getItem(`idcard_${ref}`)
 
       const registrationPdf = base64ToBlob(originalBase64, 'application/pdf')
       const signedPdf       = base64ToBlob(signedBase64, 'application/pdf')
-      const passportPhoto   = base64ToFile(passportBase64, 'passport.jpg', 'image/jpeg')
-      const idcardPhoto     = base64ToFile(idcardBase64, 'idcard.jpg', 'image/jpeg')
+      const passportPhoto   = passportBase64 ? base64ToFile(passportBase64, 'passport.jpg', 'image/jpeg') : undefined
+      const idcardPhoto     = idcardBase64   ? base64ToFile(idcardBase64,   'idcard.jpg',   'image/jpeg') : undefined
 
       setProgress('กำลังอัปโหลดเอกสาร...')
 
@@ -73,7 +73,6 @@ export default function CompletePage() {
       const { data: staffData } = await supabase
         .from('staff').select('name').eq('id', user!.id).single()
 
-      // Upload ทุกไฟล์ไป Google Drive
       const result = await finalizeGuestRecord({
         bookingRef: ref,
         checkIn: booking.check_in,
@@ -87,7 +86,6 @@ export default function CompletePage() {
 
       setProgress('กำลังบันทึกข้อมูล...')
 
-      // อัปเดต DB
       await supabase.from('guest_documents').update({
         gdrive_folder_id:             result.folderId,
         gdrive_folder_url:            result.folderUrl,
@@ -102,7 +100,6 @@ export default function CompletePage() {
         status:                       'complete',
       }).eq('booking_ref', ref)
 
-      // อัปเดต booking status
       await supabase.from('bookings')
         .update({ status: 'checked_in' })
         .eq('booking_ref', ref)
@@ -112,9 +109,8 @@ export default function CompletePage() {
         folderUrl: result.folderUrl,
       })
 
-      // ล้าง sessionStorage
       const keys = ['pdf_original', 'pdf_signed', 'pdf_filename', 'signature', 'passport', 'idcard',
-                    'passport_name', 'idcard_name', 'passport_type', 'idcard_type']
+                    'passport_name', 'idcard_name', 'passport_type', 'idcard_type', 'doc_type']
       keys.forEach(k => sessionStorage.removeItem(`${k}_${ref}`))
 
       setDriveUrl(result.folderUrl)
@@ -141,7 +137,7 @@ export default function CompletePage() {
         <div className="bg-green-500 text-white px-5 py-4">
           <h1 className="text-xl font-bold">✅ Check-in สำเร็จ!</h1>
         </div>
-        <CheckinSteps current={5} />
+        <CheckinSteps current={4} />
 
         <div className="flex-1 p-5 max-w-lg mx-auto w-full text-center">
           <CheckCircle size={80} className="text-green-500 mx-auto mb-5" />
@@ -153,12 +149,14 @@ export default function CompletePage() {
             เอกสารทั้งหมดอัปโหลดสำเร็จแล้ว
           </p>
 
-          <a
-            href={driveUrl} target="_blank" rel="noopener noreferrer"
-            className="btn-secondary flex items-center justify-center gap-2 w-full mb-4"
-          >
-            <ExternalLink size={18} /> ดูเอกสารใน Google Drive
-          </a>
+          {driveUrl && (
+            <a
+              href={driveUrl} target="_blank" rel="noopener noreferrer"
+              className="btn-secondary flex items-center justify-center gap-2 w-full mb-4"
+            >
+              <ExternalLink size={18} /> ดูไฟล์ที่เซ็นแล้ว
+            </a>
+          )}
 
           <button
             onClick={() => router.push('/dashboard')}
@@ -171,15 +169,17 @@ export default function CompletePage() {
     )
   }
 
+  const docLabel = hasPassport ? '📷 รูปเอกสาร (Passport)' : hasIdcard ? '🪪 รูปเอกสาร (บัตรประชาชน)' : '📷 รูปเอกสาร'
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-resort-teal text-white px-5 py-4">
-        <button onClick={() => router.push(`/checkin/${ref}/idcard`)} className="flex items-center gap-2 text-teal-200 mb-1">
+        <button onClick={() => router.push(`/checkin/${ref}/passport`)} className="flex items-center gap-2 text-teal-200 mb-1">
           ← กลับ
         </button>
         <h1 className="text-xl font-bold">ยืนยัน & อัปโหลด</h1>
       </header>
-      <CheckinSteps current={5} />
+      <CheckinSteps current={4} />
 
       <div className="flex-1 p-5 max-w-lg mx-auto w-full">
         <h2 className="text-lg font-bold text-gray-800 mb-4">สรุปเอกสารที่จะอัปโหลด</h2>
@@ -188,8 +188,7 @@ export default function CompletePage() {
         <div className="card space-y-3 mb-5">
           <FileStatusRow label="📄 Registration Form (Original)" ready={hasPdf} />
           <FileStatusRow label="✍️ Registration Form (เซ็นแล้ว)"  ready={hasSigned} />
-          <FileStatusRow label="📷 รูป Passport"                   ready={hasPassport} />
-          <FileStatusRow label="🪪 รูป ID Card"                    ready={hasIdcard} />
+          <FileStatusRow label={docLabel}                          ready={hasDoc} />
         </div>
 
         {!allReady && (
@@ -197,19 +196,18 @@ export default function CompletePage() {
             <AlertCircle size={20} className="text-amber-500 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-amber-700">
               <p className="font-semibold mb-1">ยังขาดเอกสาร</p>
-              {!hasPdf && <p>• กลับไป อัปโหลด Registration Form</p>}
+              {!hasPdf    && <p>• กลับไป อัปโหลด Registration Form</p>}
               {!hasSigned && <p>• กลับไป เซ็นชื่อ</p>}
-              {!hasPassport && <p>• กลับไป ถ่ายรูป Passport</p>}
-              {!hasIdcard && <p>• กลับไป ถ่ายรูป ID Card</p>}
+              {!hasDoc    && <p>• กลับไป ถ่ายรูปเอกสาร (Passport หรือ บัตรประชาชน)</p>}
             </div>
           </div>
         )}
 
-        {/* Google Drive destination */}
+        {/* Storage destination */}
         <div className="card bg-blue-50 border-blue-100 text-sm mb-5">
           <p className="font-semibold text-blue-700 mb-1">📁 จะบันทึกไว้ที่</p>
           <p className="text-blue-600 font-mono">
-            Guest Documents / {booking?.check_in?.slice(0,4)} / {booking?.check_in?.slice(5,7)}-{new Date(booking?.check_in || Date.now()).toLocaleString('en', {month:'short'}).toUpperCase()} / {ref}
+            Guest Documents / {booking?.check_in?.slice(0,4)} / {new Date(booking?.check_in || Date.now()).toLocaleString('en', {month:'short'}).toUpperCase()} / {ref}
           </p>
         </div>
 
