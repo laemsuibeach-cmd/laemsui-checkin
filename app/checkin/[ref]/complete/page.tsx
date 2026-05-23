@@ -27,7 +27,7 @@ export default function CompletePage() {
   const hasPassport = !!sessionStorage.getItem(`passport_${ref}`)
   const hasIdcard   = !!sessionStorage.getItem(`idcard_${ref}`)
   const hasDoc      = hasPassport || hasIdcard
-  const allReady    = hasPdf && hasSigned && hasDoc
+  const allReady    = hasPdf && hasSigned  // รูปเอกสารเป็น optional
 
   useEffect(() => { loadBooking() }, [ref])
 
@@ -186,9 +186,9 @@ export default function CompletePage() {
 
         {/* Checklist */}
         <div className="card space-y-3 mb-5">
-          <FileStatusRow label="📄 Registration Form (Original)" ready={hasPdf} />
-          <FileStatusRow label="✍️ Registration Form (เซ็นแล้ว)"  ready={hasSigned} />
-          <FileStatusRow label={docLabel}                          ready={hasDoc} />
+          <FileStatusRow label="📄 Registration Form (Original)" ready={hasPdf} required />
+          <FileStatusRow label="✍️ Registration Form (เซ็นแล้ว)"  ready={hasSigned} required />
+          <FileStatusRow label={docLabel}                          ready={hasDoc} required={false} />
         </div>
 
         {!allReady && (
@@ -198,7 +198,6 @@ export default function CompletePage() {
               <p className="font-semibold mb-1">ยังขาดเอกสาร</p>
               {!hasPdf    && <p>• กลับไป อัปโหลด Registration Form</p>}
               {!hasSigned && <p>• กลับไป เซ็นชื่อ</p>}
-              {!hasDoc    && <p>• กลับไป ถ่ายรูปเอกสาร (Passport หรือ บัตรประชาชน)</p>}
             </div>
           </div>
         )}
@@ -246,14 +245,16 @@ export default function CompletePage() {
   )
 }
 
-function FileStatusRow({ label, ready }: { label: string; ready: boolean }) {
+function FileStatusRow({ label, ready, required = true }: { label: string; ready: boolean; required?: boolean }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-gray-700">{label}</span>
       {ready ? (
         <span className="text-green-500 font-semibold text-sm">✅ พร้อม</span>
-      ) : (
+      ) : required ? (
         <span className="text-red-400 font-semibold text-sm">❌ ขาด</span>
+      ) : (
+        <span className="text-gray-400 font-semibold text-sm">— ข้าม</span>
       )}
     </div>
   )

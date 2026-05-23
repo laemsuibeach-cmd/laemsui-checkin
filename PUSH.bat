@@ -13,7 +13,7 @@ if "%TOKEN%"=="" (
 
 if exist ".git\index.lock" del /f ".git\index.lock"
 git add -A
-git diff --staged --quiet && (echo Nothing to commit) || git commit -m "fix: switch to Supabase Storage, fix staff FK, ensure-staff API"
+git diff --staged --quiet && (echo Nothing to commit) || git commit -m "feat: make document photo optional with skip button"
 
 git push https://laemsuibeach-cmd:%TOKEN%@github.com/laemsuibeach-cmd/laemsui-checkin.git main --force
 
@@ -25,4 +25,3 @@ if %ERRORLEVEL% == 0 (
     echo  ERROR - see message above
 )
 echo ================================================
-pause
