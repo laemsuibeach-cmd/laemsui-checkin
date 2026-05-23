@@ -1,3 +1,6 @@
+# GitHub Actions (add back later with workflow-scoped token)
+.github/
+
 # Dependencies
 node_modules/
 .pnp
