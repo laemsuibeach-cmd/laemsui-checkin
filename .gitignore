@@ -1,6 +1,10 @@
 # GitHub Actions (add back later with workflow-scoped token)
 .github/
 
+# Git credentials (never commit)
+.token
+*.token
+
 # Dependencies
 node_modules/
 .pnp

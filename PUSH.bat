@@ -4,17 +4,22 @@ echo  Pushing to GitHub...
 echo ================================================
 cd /d "G:\Claude\hotel-checkin-system"
 
-git rm -r --cached .github/ 2>nul
-git add .gitignore
-git add -A
-git commit -m "Deploy Laemsui Resort checkin system" 2>nul || echo (nothing new to commit, continuing...)
+set /p TOKEN=<.token
+if "%TOKEN%"=="" (
+    echo ERROR: ไม่พบไฟล์ .token
+    pause
+    exit /b 1
+)
 
-git push https://laemsuibeach-cmd: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@github.com/laemsuibeach-cmd/laemsui-checkin.git main --force
+git add -A
+git diff --staged --quiet && (echo Nothing to commit) || git commit -m "Deploy Laemsui Resort checkin system"
+
+git push https://laemsuibeach-cmd:%TOKEN%@github.com/laemsuibeach-cmd/laemsui-checkin.git main --force
 
 echo.
 if %ERRORLEVEL% == 0 (
-    echo  SUCCESS! Code is on GitHub!
-    echo  Vercel will deploy automatically
+    echo  SUCCESS! Vercel will deploy automatically
+    echo  URL: https://laemsui-checkin.vercel.app
 ) else (
     echo  ERROR - see message above
 )
