@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* iPad-optimized base styles */
+* {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+/* Prevent text selection during signing */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Touch-friendly buttons */
+.btn-touch {
+  @apply min-h-[52px] min-w-[52px] rounded-xl font-semibold
+         active:scale-95 transition-transform touch-manipulation;
+}
+
+.btn-primary {
+  @apply btn-touch bg-resort-teal text-white px-6 py-3
+         hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply btn-touch bg-gray-100 text-gray-700 px-6 py-3
+         hover:bg-gray-200 disabled:opacity-50;
+}
+
+.btn-danger {
+  @apply btn-touch bg-red-500 text-white px-6 py-3 hover:bg-red-600;
+}
+
+/* Step indicator */
+.step-active   { @apply bg-resort-teal text-white; }
+.step-done     { @apply bg-green-500 text-white; }
+.step-inactive { @apply bg-gray-200 text-gray-400; }
+
+/* Signature canvas container */
+.signature-container {
+  @apply relative border-2 border-dashed border-gray-300 rounded-2xl
+         bg-white overflow-hidden;
+  touch-action: none;
+}
+
+/* Camera preview */
+.camera-preview {
+  @apply w-full rounded-2xl object-cover border-2 border-gray-200;
+  max-height: 400px;
+}
+
+/* Form input iPad size */
+.input-ipad {
+  @apply w-full rounded-xl border border-gray-300 px-4 py-3
+         text-ipad-base focus:outline-none focus:ring-2
+         focus:ring-resort-teal bg-white;
+}
+
+/* Card */
+.card {
+  @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-5;
+}
