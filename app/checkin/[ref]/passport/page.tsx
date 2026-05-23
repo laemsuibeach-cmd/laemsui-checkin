@@ -135,21 +135,4 @@ export default function DocumentPage() {
         </button>
 
         <button
-          onClick={() => {
-            sessionStorage.removeItem(`passport_${ref}`)
-            sessionStorage.removeItem(`passport_name_${ref}`)
-            sessionStorage.removeItem(`passport_type_${ref}`)
-            sessionStorage.removeItem(`idcard_${ref}`)
-            sessionStorage.removeItem(`idcard_name_${ref}`)
-            sessionStorage.removeItem(`idcard_type_${ref}`)
-            sessionStorage.removeItem(`doc_type_${ref}`)
-            router.push(`/checkin/${ref}/complete`)
-          }}
-          className="btn-secondary w-full mt-3 text-base"
-        >
-          ข้ามขั้นตอนนี้
-        </button>
-      </div>
-    </div>
-  )
-}
+          onC

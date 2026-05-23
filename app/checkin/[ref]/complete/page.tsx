@@ -254,8 +254,4 @@ function FileStatusRow({ label, ready, required = true }: { label: string; ready
       ) : required ? (
         <span className="text-red-400 font-semibold text-sm">❌ ขาด</span>
       ) : (
-        <span className="text-gray-400 font-semibold text-sm">— ข้าม</span>
-      )}
-    </div>
-  )
-}
+        <span className="text-gray-400 font-se
