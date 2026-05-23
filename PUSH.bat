@@ -11,8 +11,9 @@ if "%TOKEN%"=="" (
     exit /b 1
 )
 
+if exist ".git\index.lock" del /f ".git\index.lock"
 git add -A
-git diff --staged --quiet && (echo Nothing to commit) || git commit -m "Deploy Laemsui Resort checkin system"
+git diff --staged --quiet && (echo Nothing to commit) || git commit -m "fix: auto-create staff record to resolve upload FK error"
 
 git push https://laemsuibeach-cmd:%TOKEN%@github.com/laemsuibeach-cmd/laemsui-checkin.git main --force
 

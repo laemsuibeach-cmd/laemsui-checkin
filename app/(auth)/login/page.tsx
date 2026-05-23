@@ -26,6 +26,13 @@ export default function LoginPage() {
       return
     }
 
+    // Ensure public.staff row exists for this auth user (idempotent)
+    try {
+      await fetch('/api/ensure-staff', { method: 'POST' })
+    } catch (e) {
+      console.warn('ensure-staff call failed (non-fatal):', e)
+    }
+
     await logAudit('login')
     toast.success('เข้าสู่ระบบสำเร็จ')
     router.push('/dashboard')

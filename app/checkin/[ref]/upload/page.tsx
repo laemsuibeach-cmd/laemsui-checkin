@@ -20,6 +20,9 @@ export default function UploadFormPage() {
   useEffect(() => { loadBooking() }, [ref])
 
   async function loadBooking() {
+    // Ensure staff record exists (catches users who logged in before this fix)
+    try { await fetch('/api/ensure-staff', { method: 'POST' }) } catch {}
+
     const supabase = createClient()
     const { data } = await supabase
       .from('bookings').select('*').eq('booking_ref', ref).single()
@@ -61,16 +64,20 @@ export default function UploadFormPage() {
       // สร้าง/อัปเดต guest_documents record
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      await supabase.from('guest_documents').upsert({
-        booking_ref: ref,
-        staff_id: user!.id,
-        form_uploaded_at: new Date().toISOString(),
-        status: 'in_progress',
-      }, { onConflict: 'booking_ref' })
+      if (user) {
+        const { error: upsertErr } = await supabase.from('guest_documents').upsert({
+          booking_ref: ref,
+          staff_id: user.id,
+          form_uploaded_at: new Date().toISOString(),
+          status: 'in_progress',
+        }, { onConflict: 'booking_ref' })
+        if (upsertErr) console.error('guest_documents upsert error:', upsertErr)
+      }
 
       router.push(`/checkin/${ref}/sign`)
-    } catch (err) {
-      toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่')
+    } catch (err: any) {
+      console.error('Upload handleNext error:', err)
+      toast.error(`Error: ${err?.message || String(err)}`)
       setLoading(false)
     }
   }
