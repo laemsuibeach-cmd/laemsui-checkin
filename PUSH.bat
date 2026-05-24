@@ -13,7 +13,7 @@ if "%TOKEN%"=="" (
 
 if exist ".git\index.lock" del /f ".git\index.lock"
 git add -A
-git diff --staged --quiet && (echo Nothing to commit) || git commit -m "feat: merge passport + ID card into single document step"
+git diff --staged --quiet && (echo Nothing to commit) || git commit -m "feat: date picker dashboard + history page with audit log"
 
 git push https://laemsuibeach-cmd:%TOKEN%@github.com/laemsuibeach-cmd/laemsui-checkin.git main --force
 

@@ -63,3 +63,22 @@ export type GuestDocument = {
   uploaded_at: string | null
   created_at: string
 }
+
+export type AuditLog = {
+  id: string
+  staff_id: string | null
+  booking_ref: string | null
+  action: string
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+// Booking with joined guest_documents (used in dashboard & history)
+export type BookingWithDoc = Booking & {
+  guest_documents: Array<{
+    status: GuestDocument['status']
+    gdrive_folder_url: string | null
+    finalized_at: string | null
+    uploaded_at: string | null
+  }>
+}
