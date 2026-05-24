@@ -72,6 +72,16 @@
          focus:ring-resort-teal bg-white;
 }
 
+/* Search input with left icon */
+.input-search {
+  @apply w-full rounded-xl border border-gray-200 bg-white py-3
+         text-ipad-base text-gray-800 placeholder-gray-400
+         focus:outline-none focus:ring-2 focus:ring-brand-red/30
+         focus:border-brand-red transition-all;
+  padding-left: 2.75rem;
+  padding-right: 1rem;
+}
+
 /* Card */
 .card {
   @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-5;

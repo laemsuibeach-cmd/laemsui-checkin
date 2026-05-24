@@ -1,15 +1,16 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient, type BookingWithDoc } from '@/lib/supabase'
 import { logAudit } from '@/lib/audit'
 import { countNights } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import {
   Plus, Search, LogOut, Users, CheckCircle,
-  Clock, BedDouble, ChevronRight, CalendarCheck,
-  History, ChevronLeft, ChevronRight as ChevronRightIcon,
-  FileCheck, FileX,
+  Clock, BedDouble, ChevronRight, History,
+  ChevronLeft, ChevronRight as ChevronRightIcon,
+  FileCheck, FileX, CalendarDays,
 } from 'lucide-react'
 
 const today = () => new Date().toISOString().split('T')[0]
@@ -22,18 +23,24 @@ function addDays(date: string, days: number) {
 
 function formatDateTH(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('th-TH', {
-    weekday: 'short', day: 'numeric', month: 'short', year: '2-digit',
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  })
+}
+
+function formatDateShort(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('th-TH', {
+    day: 'numeric', month: 'short', year: '2-digit',
   })
 }
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [bookings, setBookings]       = useState<BookingWithDoc[]>([])
-  const [staffName, setStaffName]     = useState('')
-  const [loading, setLoading]         = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [bookings, setBookings]             = useState<BookingWithDoc[]>([])
+  const [staffName, setStaffName]           = useState('')
+  const [loading, setLoading]               = useState(true)
+  const [searchQuery, setSearchQuery]       = useState('')
   const [showNewBooking, setShowNewBooking] = useState(false)
-  const [selectedDate, setSelectedDate]   = useState(today())
+  const [selectedDate, setSelectedDate]     = useState(today())
 
   const loadData = useCallback(async (date: string) => {
     setLoading(true)
@@ -71,77 +78,115 @@ export default function DashboardPage() {
     setSelectedDate(prev => addDays(prev, delta))
   }
 
-  const isToday    = selectedDate === today()
-  const isPast     = selectedDate < today()
-  const filtered   = bookings.filter(b =>
+  const isToday  = selectedDate === today()
+  const isPast   = selectedDate < today()
+  const filtered = bookings.filter(b =>
     b.guest_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     b.booking_ref.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (b.room_number || '').includes(searchQuery)
   )
 
-  const checkedIn  = bookings.filter(b => b.status === 'checked_in').length
-  const checkedOut = bookings.filter(b => b.status === 'checked_out').length
-  const pending    = bookings.filter(b => b.status === 'pending').length
-  const docsOk     = bookings.filter(b =>
-    b.guest_documents?.[0]?.status === 'complete'
-  ).length
+  const pending   = bookings.filter(b => b.status === 'pending').length
+  const checkedIn = bookings.filter(b => b.status === 'checked_in').length
+  const docsOk    = bookings.filter(b => b.guest_documents?.[0]?.status === 'complete').length
 
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* ── Header ── */}
-      <header className="bg-resort-teal text-white sticky top-0 z-10 shadow-md">
-        <div className="flex items-center justify-between px-5 lg:px-8 py-3 max-w-5xl mx-auto">
-          <div>
-            <h1 className="text-xl font-bold">🏖️ Laemsui Resort</h1>
-            <p className="text-teal-200 text-xs mt-0.5">{formatDateTH(selectedDate)}</p>
+      {/* ── Hero Header ── */}
+      <header className="relative h-44 lg:h-52 overflow-hidden">
+        {/* Background photo */}
+        <Image
+          src="/laemsui-resort.jpg"
+          alt="Laemsui Beach Resort"
+          fill
+          className="object-cover object-center"
+          priority
+        />
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70" />
+
+        {/* Content */}
+        <div className="relative z-10 h-full flex flex-col justify-between
+                        px-5 lg:px-8 py-4 max-w-5xl mx-auto w-full">
+          {/* Top row: logo + name + actions */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl overflow-hidden shadow-lg border-2 border-white/30 flex-shrink-0">
+                <Image src="/laemsui-logo.png" alt="Logo" width={44} height={44} className="object-cover" />
+              </div>
+              <div>
+                <h1 className="text-white font-bold text-lg lg:text-xl leading-tight">
+                  Laemsui Beach Resort
+                </h1>
+                <p className="text-white/60 text-xs">Staff Portal</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => router.push('/history')}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl
+                           bg-white/15 hover:bg-white/25 text-white text-sm
+                           font-medium transition-colors backdrop-blur-sm border border-white/20"
+              >
+                <History size={15} />
+                <span className="hidden sm:inline">ประวัติ</span>
+              </button>
+              <div className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-xl
+                              bg-white/10 text-white/80 text-sm backdrop-blur-sm border border-white/10">
+                <span className="text-xs">👤</span>
+                <span>{staffName}</span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white
+                           transition-colors backdrop-blur-sm border border-white/20"
+              >
+                <LogOut size={18} />
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => router.push('/history')}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10
-                         hover:bg-white/20 transition-colors text-sm font-medium"
-            >
-              <History size={16} /> ประวัติ
-            </button>
-            <span className="text-sm text-teal-100 hidden md:block ml-1">👤 {staffName}</span>
-            <button
-              onClick={handleLogout}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors ml-1"
-            >
-              <LogOut size={20} />
-            </button>
+
+          {/* Bottom: date label */}
+          <div>
+            <p className="text-white/50 text-xs font-medium uppercase tracking-widest mb-0.5">
+              {isToday ? 'วันนี้' : isPast ? 'ย้อนหลัง' : ''}
+            </p>
+            <p className="text-white font-semibold text-base lg:text-lg">
+              {formatDateTH(selectedDate)}
+            </p>
           </div>
         </div>
       </header>
 
       {/* ── Content ── */}
-      <div className="p-5 lg:px-8 lg:py-6 space-y-4 max-w-5xl mx-auto">
+      <div className="px-5 lg:px-8 pb-10 space-y-4 max-w-5xl mx-auto -mt-2">
 
-        {/* Date navigation */}
-        <div className="flex items-center gap-2 bg-white rounded-2xl border border-gray-200
-                        shadow-sm p-2 lg:p-3">
+        {/* Date navigation — floats over hero edge */}
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-2 flex items-center gap-2">
           <button
             onClick={() => goDate(-1)}
-            className="p-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-600"
+            className="p-2.5 rounded-xl hover:bg-gray-100 transition-colors text-gray-500"
           >
             <ChevronLeft size={20} />
           </button>
 
           <div className="flex-1 flex items-center justify-center gap-3">
+            <CalendarDays size={16} className="text-brand-red flex-shrink-0" />
             <input
               type="date"
               value={selectedDate}
               max={today()}
               onChange={e => setSelectedDate(e.target.value)}
               className="text-center font-semibold text-gray-800 bg-transparent
-                         focus:outline-none text-base lg:text-lg cursor-pointer"
+                         focus:outline-none text-base cursor-pointer"
             />
             {!isToday && (
               <button
                 onClick={() => setSelectedDate(today())}
-                className="px-3 py-1 bg-resort-teal text-white rounded-lg text-xs
-                           font-semibold hover:bg-teal-700 transition-colors"
+                className="px-3 py-1 bg-brand-red text-white rounded-lg text-xs
+                           font-semibold hover:bg-brand-red-dark transition-colors"
               >
                 วันนี้
               </button>
@@ -151,8 +196,8 @@ export default function DashboardPage() {
           <button
             onClick={() => goDate(1)}
             disabled={isToday}
-            className="p-2 rounded-xl hover:bg-gray-100 disabled:opacity-30
-                       transition-colors text-gray-600"
+            className="p-2.5 rounded-xl hover:bg-gray-100 disabled:opacity-30
+                       transition-colors text-gray-500"
           >
             <ChevronRightIcon size={20} />
           </button>
@@ -161,39 +206,62 @@ export default function DashboardPage() {
         {/* Past date banner */}
         {isPast && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5
-                          flex items-center gap-2 text-amber-700 text-sm">
-            <History size={16} className="flex-shrink-0" />
-            <span>กำลังดูข้อมูลย้อนหลัง · สามารถอัปโหลดเอกสารเพิ่มเติมได้</span>
+                          flex items-center gap-2 text-amber-700 text-sm font-medium">
+            <History size={15} className="flex-shrink-0 text-amber-500" />
+            กำลังดูข้อมูลย้อนหลัง · สามารถอัปโหลดเอกสารเพิ่มเติมได้
           </div>
         )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard icon={<Users size={18} className="text-resort-teal" />}
-                    value={bookings.length} label="Bookings" color="teal" />
-          <StatCard icon={<Clock size={18} className="text-amber-500" />}
-                    value={pending} label="รอดำเนินการ" color="amber" />
-          <StatCard icon={<CheckCircle size={18} className="text-green-500" />}
-                    value={checkedIn} label="Check-in แล้ว" color="green" />
-          <StatCard icon={<FileCheck size={18} className="text-blue-500" />}
-                    value={docsOk} label="เอกสารครบ" color="blue" />
+          <StatCard
+            icon={<Users size={20} />}
+            value={bookings.length}
+            label="Bookings ทั้งหมด"
+            gradient="from-brand-red to-brand-red-dark"
+            light="bg-red-50 text-brand-red"
+          />
+          <StatCard
+            icon={<Clock size={20} />}
+            value={pending}
+            label="รอดำเนินการ"
+            gradient="from-amber-500 to-orange-500"
+            light="bg-amber-50 text-amber-600"
+          />
+          <StatCard
+            icon={<CheckCircle size={20} />}
+            value={checkedIn}
+            label="Check-in แล้ว"
+            gradient="from-emerald-500 to-teal-600"
+            light="bg-emerald-50 text-emerald-600"
+          />
+          <StatCard
+            icon={<FileCheck size={20} />}
+            value={docsOk}
+            label="เอกสารครบ"
+            gradient="from-blue-500 to-indigo-600"
+            light="bg-blue-50 text-blue-600"
+          />
         </div>
 
         {/* Search + Add */}
         <div className="flex gap-3">
           <div className="relative flex-1">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
               type="search"
               placeholder="ค้นหาชื่อ, Booking Ref, ห้อง..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="input-ipad !pl-11"
+              className="input-search"
             />
           </div>
           <button
             onClick={() => setShowNewBooking(true)}
-            className="btn-primary px-5 flex items-center gap-2"
+            className="flex items-center gap-2 px-5 py-3 rounded-xl font-semibold
+                       text-white bg-brand-red hover:bg-brand-red-dark
+                       active:scale-[0.97] transition-all shadow-md shadow-brand-red/20
+                       min-h-[52px] touch-manipulation"
           >
             <Plus size={20} />
             <span className="hidden sm:inline">เพิ่ม Booking</span>
@@ -203,21 +271,23 @@ export default function DashboardPage() {
         {/* Booking List */}
         {loading ? (
           <div className="text-center py-16 text-gray-400">
-            <div className="w-8 h-8 border-2 border-resort-teal border-t-transparent
+            <div className="w-8 h-8 border-2 border-brand-red border-t-transparent
                             rounded-full animate-spin mx-auto mb-3" />
             กำลังโหลด...
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
-            <BedDouble size={52} className="mx-auto mb-3 opacity-40" />
-            <p className="text-lg">ไม่มี Booking {isToday ? 'วันนี้' : formatDateTH(selectedDate)}</p>
+            <BedDouble size={52} className="mx-auto mb-3 opacity-30" />
+            <p className="text-lg font-medium text-gray-500">
+              ไม่มี Booking {isToday ? 'วันนี้' : formatDateShort(selectedDate)}
+            </p>
             <p className="text-sm mt-1">กด "เพิ่ม Booking" เพื่อเริ่ม</p>
           </div>
         ) : (
           <div>
-            <h2 className="text-gray-500 font-semibold text-sm mb-3">
+            <p className="text-gray-400 text-sm mb-3 font-medium">
               {filtered.length} รายการ
-            </h2>
+            </p>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {filtered.map(booking => (
                 <BookingCard
@@ -247,17 +317,21 @@ export default function DashboardPage() {
 
 /* ── Stat Card ── */
 function StatCard({
-  icon, value, label, color,
-}: { icon: React.ReactNode; value: number; label: string; color: string }) {
-  const colors: Record<string, string> = {
-    teal: 'text-resort-teal', amber: 'text-amber-500',
-    green: 'text-green-500',  blue: 'text-blue-500',
-  }
+  icon, value, label, gradient, light,
+}: {
+  icon: React.ReactNode
+  value: number
+  label: string
+  gradient: string
+  light: string
+}) {
   return (
-    <div className="card text-center py-4">
-      <div className="flex justify-center mb-1">{icon}</div>
-      <div className={`text-3xl font-bold ${colors[color]}`}>{value}</div>
-      <div className="text-gray-500 text-xs mt-1">{label}</div>
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 lg:p-5">
+      <div className={`inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3 ${light}`}>
+        {icon}
+      </div>
+      <div className="text-3xl font-bold text-gray-800 leading-none mb-1">{value}</div>
+      <div className="text-gray-400 text-xs font-medium">{label}</div>
     </div>
   )
 }
@@ -265,59 +339,66 @@ function StatCard({
 /* ── Booking Card ── */
 function BookingCard({ booking, onClick }: { booking: BookingWithDoc; onClick: () => void }) {
   const doc = booking.guest_documents?.[0]
-  const docComplete = doc?.status === 'complete'
+  const docComplete   = doc?.status === 'complete'
   const docInProgress = doc?.status === 'in_progress'
 
-  const statusColors: Record<string, string> = {
-    pending:     'bg-amber-100 text-amber-700',
-    checked_in:  'bg-green-100 text-green-700',
-    checked_out: 'bg-gray-100 text-gray-500',
-    cancelled:   'bg-red-100 text-red-500',
+  const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
+    pending:     { bg: 'bg-amber-100',  text: 'text-amber-700',  label: 'รอ Check-in' },
+    checked_in:  { bg: 'bg-green-100',  text: 'text-green-700',  label: 'Check-in แล้ว' },
+    checked_out: { bg: 'bg-gray-100',   text: 'text-gray-500',   label: 'Check-out แล้ว' },
+    cancelled:   { bg: 'bg-red-100',    text: 'text-red-500',    label: 'ยกเลิก' },
   }
-  const statusLabels: Record<string, string> = {
-    pending:     'รอ Check-in',
-    checked_in:  'Check-in แล้ว',
-    checked_out: 'Check-out แล้ว',
-    cancelled:   'ยกเลิก',
-  }
+  const s = statusConfig[booking.status] || statusConfig.pending
 
   return (
     <button
       onClick={onClick}
-      className="card w-full text-left hover:shadow-md active:scale-[0.98] transition-all"
+      className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4
+                 text-left w-full hover:shadow-md hover:border-gray-200
+                 active:scale-[0.98] transition-all group"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full
-                              ${statusColors[booking.status]}`}>
-              {statusLabels[booking.status]}
+          {/* Status + ref */}
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${s.bg} ${s.text}`}>
+              {s.label}
             </span>
-            <span className="text-xs text-gray-400">{booking.booking_ref}</span>
+            <span className="text-xs text-gray-300 font-mono">{booking.booking_ref}</span>
           </div>
-          <p className="text-lg font-bold text-gray-800 truncate">{booking.guest_name}</p>
-          <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 flex-wrap">
-            <span className="flex items-center gap-1">
-              <BedDouble size={13} /> ห้อง {booking.room_number || '-'}
+
+          {/* Guest name */}
+          <p className="text-base font-bold text-gray-800 truncate mb-1.5">
+            {booking.guest_name}
+          </p>
+
+          {/* Details row */}
+          <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
+            <span className="flex items-center gap-1 font-medium text-gray-600">
+              <BedDouble size={12} /> ห้อง {booking.room_number || '—'}
             </span>
             <span>{countNights(booking.check_in, booking.check_out)} คืน</span>
-            <span>{booking.num_adults} ผู้ใหญ่</span>
+            <span>{booking.num_adults} ผู้ใหญ่{booking.num_children > 0 ? ` · ${booking.num_children} เด็ก` : ''}</span>
           </div>
         </div>
 
+        {/* Right: arrow + doc status */}
         <div className="flex flex-col items-end gap-2 flex-shrink-0">
-          <ChevronRight size={18} className="text-gray-300" />
+          <ChevronRight size={18} className="text-gray-200 group-hover:text-gray-400 transition-colors" />
           {docComplete ? (
-            <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
-              <FileCheck size={13} /> เอกสารครบ
+            <span className="flex items-center gap-1 text-xs text-emerald-600 font-semibold
+                             bg-emerald-50 px-2 py-0.5 rounded-full">
+              <FileCheck size={11} /> เอกสารครบ
             </span>
           ) : docInProgress ? (
-            <span className="flex items-center gap-1 text-xs text-blue-500 font-medium">
-              <Clock size={13} /> กำลังดำเนินการ
+            <span className="flex items-center gap-1 text-xs text-blue-500 font-semibold
+                             bg-blue-50 px-2 py-0.5 rounded-full">
+              <Clock size={11} /> กำลังดำเนินการ
             </span>
           ) : (
-            <span className="flex items-center gap-1 text-xs text-amber-500 font-medium">
-              <FileX size={13} /> ยังไม่อัปโหลด
+            <span className="flex items-center gap-1 text-xs text-amber-500 font-semibold
+                             bg-amber-50 px-2 py-0.5 rounded-full">
+              <FileX size={11} /> ยังไม่อัปโหลด
             </span>
           )}
         </div>
@@ -358,48 +439,60 @@ function NewBookingModal({
     onCreated()
   }
 
+  const isPastDate = defaultDate < new Date().toISOString().split('T')[0]
+
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end lg:items-center lg:justify-center">
-      <div className="bg-white w-full rounded-t-3xl lg:rounded-3xl p-6 lg:p-8
-                      max-h-[90vh] lg:max-w-2xl overflow-y-auto">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h2 className="text-xl font-bold">เพิ่ม Booking</h2>
-            {defaultDate < new Date().toISOString().split('T')[0] && (
-              <p className="text-sm text-amber-600 mt-0.5">📅 บันทึกย้อนหลัง: {formatDateTH(defaultDate)}</p>
-            )}
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-end lg:items-center lg:justify-center">
+      <div className="bg-white w-full rounded-t-3xl lg:rounded-3xl
+                      max-h-[92vh] lg:max-w-2xl overflow-y-auto">
+
+        {/* Modal header */}
+        <div className="sticky top-0 bg-white rounded-t-3xl border-b border-gray-100 px-6 pt-5 pb-4 z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-gray-800">เพิ่ม Booking</h2>
+              {isPastDate && (
+                <p className="text-sm text-amber-600 mt-0.5 font-medium">
+                  📅 บันทึกย้อนหลัง: {formatDateShort(defaultDate)}
+                </p>
+              )}
+            </div>
+            <button onClick={onClose}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl
+                               bg-gray-100 hover:bg-gray-200 text-gray-500 text-lg transition-colors">
+              ✕
+            </button>
           </div>
-          <button onClick={onClose} className="text-gray-400 text-2xl leading-none p-1">✕</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-600 mb-1">Booking Ref *</label>
+              <label className="block text-sm font-semibold text-gray-600 mb-1.5">Booking Ref *</label>
               <input className="input-ipad" placeholder="จาก Little Hotelier"
                      value={form.booking_ref} onChange={e => update('booking_ref', e.target.value)} required />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-600 mb-1">เลขห้อง</label>
+              <label className="block text-sm font-semibold text-gray-600 mb-1.5">เลขห้อง</label>
               <input className="input-ipad" placeholder="101"
                      value={form.room_number} onChange={e => update('room_number', e.target.value)} />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-600 mb-1">ชื่อ Guest *</label>
+            <label className="block text-sm font-semibold text-gray-600 mb-1.5">ชื่อ Guest *</label>
             <input className="input-ipad" placeholder="Mr. John Smith"
                    value={form.guest_name} onChange={e => update('guest_name', e.target.value)} required />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-600 mb-1">Check-in *</label>
+              <label className="block text-sm font-semibold text-gray-600 mb-1.5">Check-in *</label>
               <input type="date" className="input-ipad"
                      value={form.check_in} onChange={e => update('check_in', e.target.value)} required />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-600 mb-1">Check-out *</label>
+              <label className="block text-sm font-semibold text-gray-600 mb-1.5">Check-out *</label>
               <input type="date" className="input-ipad"
                      value={form.check_out} onChange={e => update('check_out', e.target.value)} required />
             </div>
@@ -407,24 +500,30 @@ function NewBookingModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-600 mb-1">ผู้ใหญ่</label>
+              <label className="block text-sm font-semibold text-gray-600 mb-1.5">ผู้ใหญ่</label>
               <input type="number" min={1} max={10} className="input-ipad"
                      value={form.num_adults} onChange={e => update('num_adults', parseInt(e.target.value))} />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-600 mb-1">เด็ก</label>
+              <label className="block text-sm font-semibold text-gray-600 mb-1.5">เด็ก</label>
               <input type="number" min={0} max={10} className="input-ipad"
                      value={form.num_children} onChange={e => update('num_children', parseInt(e.target.value))} />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-600 mb-1">สัญชาติ</label>
+            <label className="block text-sm font-semibold text-gray-600 mb-1.5">สัญชาติ</label>
             <input className="input-ipad" placeholder="Thai, British, etc."
                    value={form.nationality} onChange={e => update('nationality', e.target.value)} />
           </div>
 
-          <button type="submit" disabled={loading} className="btn-primary w-full text-lg">
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-4 rounded-xl font-bold text-white text-base
+                       bg-brand-red hover:bg-brand-red-dark disabled:opacity-60
+                       active:scale-[0.98] transition-all shadow-lg shadow-brand-red/20"
+          >
             {loading ? 'กำลังบันทึก...' : '✅ บันทึก Booking'}
           </button>
         </form>
