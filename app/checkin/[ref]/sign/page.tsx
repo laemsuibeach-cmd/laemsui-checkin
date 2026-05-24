@@ -27,16 +27,8 @@ export default function SignPage() {
   useEffect(() => { loadGuestName(); buildPdfUrl() }, [ref])
 
   useEffect(() => {
-    if (screen !== 'sign' || !canvasRef.current) return
-    let cleanup: (() => void) | undefined
-    const rafId = requestAnimationFrame(async () => {
-      cleanup = await initSignaturePad()
-    })
-    return () => {
-      cancelAnimationFrame(rafId)
-      cleanup?.()
-      setIsEmpty(true)
-      setSigPad(null)
+    if (screen === 'sign' && canvasRef.current) {
+      requestAnimationFrame(() => initSignaturePad())
     }
   }, [screen])
 
@@ -72,50 +64,43 @@ export default function SignPage() {
     const SignaturePad = (await import('signature_pad')).default
     const canvas    = canvasRef.current!
     const container = canvas.parentElement!
-    let pad: InstanceType<typeof SignaturePad> | null = null
+
+    // Create pad first — resizeCanvas references it via closure below
+    const pad = new SignaturePad(canvas, {
+      backgroundColor: 'rgba(0,0,0,0)',
+      penColor: 'rgb(0, 30, 100)',
+      minWidth: 1.5, maxWidth: 4, velocityFilterWeight: 0.7,
+    })
 
     function resizeCanvas() {
       const ratio = Math.max(window.devicePixelRatio || 1, 1)
       const w = container.clientWidth
       const h = container.clientHeight
-
-      // Save signature data before resize so it's not lost
-      const savedData = pad?.toData()
-
+      // Save strokes before resizing so signature isn't wiped
+      const savedData = pad.toData()
       canvas.width  = w * ratio
       canvas.height = h * ratio
       canvas.style.width  = w + 'px'
       canvas.style.height = h + 'px'
       canvas.getContext('2d')!.scale(ratio, ratio)
-      pad?.clear()
-
-      // Restore signature after resize
-      if (savedData && savedData.length > 0) {
-        pad?.fromData(savedData)
-      }
+      pad.clear()
+      // Restore strokes after resize
+      if (savedData.length > 0) pad.fromData(savedData)
     }
 
-    pad = new SignaturePad(canvas, {
-      backgroundColor: 'rgba(0,0,0,0)',
-      penColor: 'rgb(0, 30, 100)',
-      minWidth: 1.5, maxWidth: 4, velocityFilterWeight: 0.7,
-    })
     canvas.addEventListener('touchstart', e => e.preventDefault(), { passive: false })
     canvas.addEventListener('touchmove',  e => e.preventDefault(), { passive: false })
     pad.addEventListener('beginStroke', () => setIsEmpty(false))
-    pad.addEventListener('endStroke',   () => setIsEmpty(pad!.isEmpty()))
 
     resizeCanvas()
 
     const ro = new ResizeObserver(() => {
       resizeCanvas()
-      // Update isEmpty based on actual pad content (not blindly reset to true)
-      setIsEmpty(pad?.isEmpty() ?? true)
+      // Only reset isEmpty if signature was truly lost (shouldn't happen now)
+      if (pad.isEmpty()) setIsEmpty(true)
     })
     ro.observe(container)
     setSigPad(pad)
-
-    return () => ro.disconnect()
   }
 
   function clearSignature() { sigPad?.clear(); setIsEmpty(true) }
