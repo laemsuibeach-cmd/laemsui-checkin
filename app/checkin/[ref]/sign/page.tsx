@@ -22,7 +22,12 @@ export default function SignPage() {
   const [showPdpa, setShowPdpa]   = useState(true)
 
   useEffect(() => { loadGuestName() }, [ref])
-  useEffect(() => { if (!showPdpa && canvasRef.current) initSignaturePad() }, [showPdpa])
+  useEffect(() => {
+    if (!showPdpa && canvasRef.current) {
+      // Wait one frame so layout is settled before reading offsetHeight
+      requestAnimationFrame(() => initSignaturePad())
+    }
+  }, [showPdpa])
 
   async function loadGuestName() {
     const supabase = createClient()
@@ -34,10 +39,20 @@ export default function SignPage() {
   async function initSignaturePad() {
     const SignaturePad = (await import('signature_pad')).default
     const canvas = canvasRef.current!
-    const ratio  = Math.max(window.devicePixelRatio || 1, 1)
-    canvas.width  = canvas.offsetWidth  * ratio
-    canvas.height = canvas.offsetHeight * ratio
-    canvas.getContext('2d')!.scale(ratio, ratio)
+    const container = canvas.parentElement!
+
+    function resizeCanvas() {
+      const ratio = Math.max(window.devicePixelRatio || 1, 1)
+      // Read container size (not canvas size) for accuracy
+      const w = container.clientWidth
+      const h = container.clientHeight
+      canvas.width  = w * ratio
+      canvas.height = h * ratio
+      canvas.style.width  = w + 'px'
+      canvas.style.height = h + 'px'
+      canvas.getContext('2d')!.scale(ratio, ratio)
+      pad?.clear()
+    }
 
     const pad = new SignaturePad(canvas, {
       backgroundColor: 'rgba(0,0,0,0)',
@@ -47,7 +62,15 @@ export default function SignPage() {
     canvas.addEventListener('touchstart', e => e.preventDefault(), { passive: false })
     canvas.addEventListener('touchmove',  e => e.preventDefault(), { passive: false })
     pad.addEventListener('beginStroke', () => setIsEmpty(false))
+
+    resizeCanvas()
+
+    // Re-size if orientation changes (iPad rotation)
+    const ro = new ResizeObserver(() => { resizeCanvas(); setIsEmpty(true) })
+    ro.observe(container)
+
     setSigPad(pad)
+    return () => ro.disconnect()
   }
 
   function clearSignature() { sigPad?.clear(); setIsEmpty(true) }
@@ -173,8 +196,8 @@ export default function SignPage() {
 
   /* ── SIGNATURE SCREEN ── */
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-resort-teal text-white px-5 lg:px-8 py-3 lg:py-4">
+    <div className="h-screen bg-white flex flex-col overflow-hidden">
+      <header className="bg-resort-teal text-white px-5 lg:px-8 py-3 flex-shrink-0">
         <button onClick={() => setShowPdpa(true)}
                 className="flex items-center gap-2 text-teal-200 mb-1">
           <ArrowLeft size={18} /> กลับ
@@ -182,28 +205,31 @@ export default function SignPage() {
         <h1 className="text-xl font-bold">เซ็นชื่อ</h1>
         <p className="text-teal-200 text-sm">{guestName} · {ref}</p>
       </header>
-      <CheckinSteps current={2} />
+      <div className="flex-shrink-0">
+        <CheckinSteps current={2} />
+      </div>
 
-      <div className="flex-1 p-5 lg:p-8 max-w-lg lg:max-w-4xl mx-auto w-full flex flex-col">
-        <p className="text-center text-gray-500 mb-3 text-sm lg:text-base">
+      <div className="flex-1 flex flex-col px-4 pt-3 pb-4 lg:px-8 min-h-0">
+        <p className="text-center text-gray-400 mb-3 text-sm flex-shrink-0">
           กรุณาเซ็นชื่อในกรอบด้านล่าง (นิ้ว หรือ Apple Pencil)
         </p>
 
-        {/* Signature Canvas — flex-1 so it fills available height */}
-        <div className="signature-container flex-1" style={{ minHeight: '260px' }}>
+        {/* Canvas — takes all remaining vertical space */}
+        <div className="signature-container flex-1 min-h-0">
           <canvas
             ref={canvasRef}
-            className="w-full h-full no-select"
-            style={{ touchAction: 'none', minHeight: '260px' }}
+            className="no-select"
+            style={{ touchAction: 'none', display: 'block' }}
           />
           {isEmpty && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <p className="text-gray-300 text-2xl lg:text-3xl">✍️ เซ็นชื่อที่นี่</p>
+              <p className="text-gray-300 text-2xl lg:text-3xl select-none">✍️ เซ็นชื่อที่นี่</p>
             </div>
           )}
         </div>
 
-        <div className="flex gap-3 mt-4">
+        {/* Buttons */}
+        <div className="flex gap-3 mt-3 flex-shrink-0">
           <button
             onClick={clearSignature}
             className="btn-secondary flex items-center gap-2 flex-1 justify-center"
