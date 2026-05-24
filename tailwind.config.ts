@@ -21,16 +21,22 @@ const config: Config = {
           teal:  '#0f766e',
           cream: '#fefce8',
         },
+        brand: {
+          red:       '#C8372D',
+          'red-dark':'#a82b23',
+          'red-light':'#e04038',
+        },
       },
       // iPad touch targets — minimum 44px
       minHeight: { touch: '44px' },
       minWidth:  { touch: '44px' },
       fontSize: {
-        // Larger for easier reading on iPad
-        'ipad-sm': ['16px', '24px'],
-        'ipad-base': ['18px', '28px'],
-        'ipad-lg': ['20px', '30px'],
-        'ipad-xl': ['24px', '32px'],
+        // rem-based so they scale with html font-size (17–19px on tablet/notebook)
+        'ipad-sm':   ['1rem',     { lineHeight: '1.5rem' }],   // ~16 → 18 → 19px
+        'ipad-base': ['1.125rem', { lineHeight: '1.75rem' }],  // ~18 → 20 → 21px
+        'ipad-lg':   ['1.25rem',  { lineHeight: '1.875rem' }], // ~20 → 22 → 24px
+        'ipad-xl':   ['1.5rem',   { lineHeight: '2rem' }],     // ~24 → 27 → 28px
+        'ipad-2xl':  ['1.75rem',  { lineHeight: '2.25rem' }],  // ~28 → 31 → 33px
       },
     },
   },

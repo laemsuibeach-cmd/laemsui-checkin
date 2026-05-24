@@ -2,10 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-/* iPad-optimized base styles */
+/* ===== Base ===== */
 * {
   -webkit-tap-highlight-color: transparent;
   box-sizing: border-box;
+}
+
+/* Safe-area variables for iPad notch / home indicator */
+:root {
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left, 0px);
+  --safe-right:  env(safe-area-inset-right, 0px);
 }
 
 /* Prevent text selection during signing */
@@ -53,6 +60,11 @@
   max-height: 400px;
 }
 
+/* iPad Landscape: compact camera preview (less vertical space) */
+@media (orientation: landscape) and (min-width: 768px) {
+  .camera-preview { max-height: 260px; }
+}
+
 /* Form input iPad size */
 .input-ipad {
   @apply w-full rounded-xl border border-gray-300 px-4 py-3
@@ -63,4 +75,32 @@
 /* Card */
 .card {
   @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-5;
+}
+
+/* Safe-area padding helpers */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+}
+.px-safe {
+  padding-left:  env(safe-area-inset-left, 20px);
+  padding-right: env(safe-area-inset-right, 20px);
+}
+
+/* ── Responsive font scaling ──────────────────────────────────────
+   Bumping html base size makes ALL rem units (Tailwind text, spacing,
+   max-w, etc.) scale proportionally — no need to touch individual pages.
+
+   Mobile  (< 768px) : 16px  (browser default — leave untouched)
+   Tablet portrait    : 17px  (iPad in portrait, small notebooks)
+   Tablet landscape + : 18px  (iPad landscape, standard notebooks)
+   Large screens      : 19px  (big monitors / retina displays)
+─────────────────────────────────────────────────────────────────── */
+@media (min-width: 768px) {
+  html { font-size: 17px; }
+}
+@media (min-width: 1024px) {
+  html { font-size: 18px; }
+}
+@media (min-width: 1280px) {
+  html { font-size: 19px; }
 }

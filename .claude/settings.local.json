@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls -la \"G:\\\\Claude\\\\hotel-checkin-system\\\\\" | head -30)"
+      "Bash(ls -la \"G:\\\\Claude\\\\hotel-checkin-system\\\\\" | head -30)",
+      "PowerShell(Get-ChildItem \"G:\\\\Claude\\\\hotel-checkin-system\\\\public\" -ErrorAction SilentlyContinue | Select-Object Name; if \\(-not \\(Test-Path \"G:\\\\Claude\\\\hotel-checkin-system\\\\public\"\\)\\) { \"No public folder\" })",
+      "Bash(cmd /c PUSH.bat)"
     ]
   }
 }

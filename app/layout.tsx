@@ -19,9 +19,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1, // ป้องกัน zoom ขณะเซ็น
+  maximumScale: 1,   // ป้องกัน zoom ขณะเซ็น
   userScalable: false,
   themeColor: '#0f766e',
+  viewportFit: 'cover', // safe-area สำหรับ iPad notch / home indicator
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -38,9 +39,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           toastOptions={{
             duration: 3000,
             style: {
-              fontSize: '16px',
-              padding: '16px 20px',
-              borderRadius: '12px',
+              fontSize: '1rem',        // scales with html font-size (17–19px on tablet)
+              padding: '1rem 1.25rem',
+              borderRadius: '0.75rem',
             },
           }}
         />
