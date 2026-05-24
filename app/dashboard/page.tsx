@@ -112,8 +112,8 @@ export default function DashboardPage() {
           {/* Top row: logo + name + actions */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-2xl overflow-hidden shadow-lg border-2 border-white/30 flex-shrink-0">
-                <Image src="/laemsui-logo.png" alt="Logo" width={80} height={80} className="object-cover" />
+              <div className="w-16 h-16 lg:w-20 lg:h-20 flex-shrink-0">
+                <Image src="/laemsui-logo.png" alt="Logo" width={80} height={80} className="object-contain w-full h-full" />
               </div>
               <div>
                 <h1 className="text-white font-bold text-lg lg:text-xl leading-tight">

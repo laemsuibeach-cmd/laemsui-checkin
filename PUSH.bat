@@ -13,7 +13,7 @@ if "%TOKEN%"=="" (
 
 if exist ".git\index.lock" del /f ".git\index.lock"
 git add -A
-git diff --staged --quiet && (echo Nothing to commit) || git commit -m "fix: enlarge logo in dashboard hero"
+git diff --staged --quiet && (echo Nothing to commit) || git commit -m "fix: remove logo border/crop, use object-contain"
 
 git push https://laemsuibeach-cmd:%TOKEN%@github.com/laemsuibeach-cmd/laemsui-checkin.git main --force
 
