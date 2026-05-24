@@ -129,11 +129,25 @@ export default function CompletePage() {
             <Home size={16} /> หน้าหลัก
           </button>
         </header>
-        <iframe
-          src="/Laem Sui Beach — Activities (Print).pdf"
+        {/* object tag รองรับ iOS Safari ดีกว่า iframe สำหรับ PDF */}
+        <object
+          data="/activities.pdf"
+          type="application/pdf"
           className="flex-1 w-full border-0"
-          title="Laemsui Beach — Activities & Facilities"
-        />
+        >
+          {/* Fallback สำหรับ browser ที่ไม่รองรับ embed PDF */}
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
+            <p className="text-gray-500 text-base">กรุณาเปิด PDF ในหน้าต่างใหม่</p>
+            <a
+              href="/activities.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary flex items-center gap-2 px-6 py-3"
+            >
+              <ExternalLink size={18} /> เปิด PDF
+            </a>
+          </div>
+        </object>
       </div>
     )
   }
