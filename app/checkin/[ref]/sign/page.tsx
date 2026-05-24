@@ -78,7 +78,7 @@ export default function SignPage() {
   async function handleNext() {
     if (!pdpaConsent) { toast.error('กรุณายินยอม PDPA ก่อน'); return }
     if (isEmpty || !sigPad || sigPad.isEmpty()) {
-      toast.error('กรุณาให้ Guest เซ็นชื่อก่อน'); return
+      toast.error('Please ask the guest to sign first.'); return
     }
     setLoading(true)
     try {
@@ -115,7 +115,7 @@ export default function SignPage() {
       router.push(`/checkin/${ref}/passport`)
     } catch (err) {
       console.error(err)
-      toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่')
+      toast.error('Something went wrong, please try again.')
       setLoading(false)
     }
   }
@@ -127,9 +127,9 @@ export default function SignPage() {
         <header className="bg-resort-teal text-white px-5 lg:px-8 py-3 lg:py-4">
           <button onClick={() => router.push(`/checkin/${ref}/upload`)}
                   className="flex items-center gap-2 text-teal-200 mb-1">
-            <ArrowLeft size={18} /> กลับ
+            <ArrowLeft size={18} /> Back
           </button>
-          <h1 className="text-xl font-bold">แจ้งข้อมูล PDPA</h1>
+          <h1 className="text-xl font-bold">Privacy Notice (PDPA)</h1>
         </header>
         <CheckinSteps current={2} />
 
@@ -139,24 +139,24 @@ export default function SignPage() {
 
             {/* LEFT: PDPA text */}
             <div className="card">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">📋 การเก็บข้อมูลส่วนบุคคล</h2>
+              <h2 className="text-xl font-bold text-gray-800 mb-4">📋 Personal Data Collection Notice</h2>
               <div className="text-gray-600 space-y-3 text-base leading-relaxed">
                 <p>
-                  ทางโรงแรมจะเก็บรวบรวมข้อมูลของท่าน ได้แก่ ชื่อ-นามสกุล,
-                  หมายเลขหนังสือเดินทาง/บัตรประชาชน, ภาพถ่าย และลายเซ็น
-                  เพื่อวัตถุประสงค์ดังนี้:
+                  Laemsui Beach Resort collects your personal data — including full name,
+                  passport / national ID number, photograph, and signature — for the following purposes:
                 </p>
                 <ul className="space-y-2 pl-2">
-                  <li>✓ การลงทะเบียนเช็คอินตามกฎหมาย</li>
-                  <li>✓ ความปลอดภัยของโรงแรมและผู้เข้าพัก</li>
-                  <li>✓ การปฏิบัติตามกฎหมาย พ.ร.บ. โรงแรม</li>
+                  <li>✓ Guest check-in registration as required by Thai law</li>
+                  <li>✓ Hotel and guest security management</li>
+                  <li>✓ Compliance with the Hotel Act (Thailand)</li>
                 </ul>
                 <p className="text-sm text-gray-500">
-                  ข้อมูลจะถูกเก็บรักษาเป็นเวลา 2 ปีหลังจากเช็คเอาท์
-                  และจะถูกลบออกโดยอัตโนมัติตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA)
+                  Your data will be retained for 2 years after check-out and then permanently
+                  deleted in accordance with the Personal Data Protection Act B.E. 2562 (PDPA).
                 </p>
                 <p className="text-sm text-gray-500">
-                  ท่านมีสิทธิ์ขอดู, แก้ไข หรือลบข้อมูลได้โดยติดต่อทางโรงแรม
+                  You have the right to access, correct, or request deletion of your data
+                  by contacting the hotel directly.
                 </p>
               </div>
             </div>
@@ -171,20 +171,20 @@ export default function SignPage() {
                   className="w-6 h-6 mt-0.5 accent-teal-600 flex-shrink-0"
                 />
                 <span className="text-base text-gray-700">
-                  ข้าพเจ้ารับทราบและยินยอมให้โรงแรมเก็บรวบรวมข้อมูลส่วนบุคคลของข้าพเจ้า
-                  ตามที่ระบุข้างต้น
+                  I have read and understood the above notice, and I consent to the
+                  collection of my personal data for hotel check-in purposes.
                 </span>
               </label>
 
               <button
                 onClick={() => {
-                  if (!pdpaConsent) { toast.error('กรุณายินยอม PDPA ก่อน'); return }
+                  if (!pdpaConsent) { toast.error('Please accept the privacy notice first.'); return }
                   setShowPdpa(false)
                 }}
                 disabled={!pdpaConsent}
                 className="btn-primary w-full text-lg"
               >
-                ยินยอม → ไปเซ็นชื่อ
+                I Agree → Proceed to Sign
               </button>
             </div>
 
@@ -200,9 +200,9 @@ export default function SignPage() {
       <header className="bg-resort-teal text-white px-5 lg:px-8 py-3 flex-shrink-0">
         <button onClick={() => setShowPdpa(true)}
                 className="flex items-center gap-2 text-teal-200 mb-1">
-          <ArrowLeft size={18} /> กลับ
+          <ArrowLeft size={18} /> Back
         </button>
-        <h1 className="text-xl font-bold">เซ็นชื่อ</h1>
+        <h1 className="text-xl font-bold">Guest Signature</h1>
         <p className="text-teal-200 text-sm">{guestName} · {ref}</p>
       </header>
       <div className="flex-shrink-0">
@@ -211,7 +211,7 @@ export default function SignPage() {
 
       <div className="flex-1 flex flex-col px-4 pt-3 pb-4 lg:px-8 min-h-0">
         <p className="text-center text-gray-400 mb-3 text-sm flex-shrink-0">
-          กรุณาเซ็นชื่อในกรอบด้านล่าง (นิ้ว หรือ Apple Pencil)
+          Please sign below using your finger or Apple Pencil
         </p>
 
         {/* Canvas — takes all remaining vertical space */}
@@ -223,7 +223,7 @@ export default function SignPage() {
           />
           {isEmpty && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <p className="text-gray-300 text-2xl lg:text-3xl select-none">✍️ เซ็นชื่อที่นี่</p>
+              <p className="text-gray-300 text-2xl lg:text-3xl select-none">✍️ Sign here</p>
             </div>
           )}
         </div>
@@ -234,7 +234,7 @@ export default function SignPage() {
             onClick={clearSignature}
             className="btn-secondary flex items-center gap-2 flex-1 justify-center"
           >
-            <RotateCcw size={18} /> ล้างใหม่
+            <RotateCcw size={18} /> Clear
           </button>
           <button
             onClick={handleNext}
@@ -243,7 +243,7 @@ export default function SignPage() {
           >
             {loading
               ? <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              : <><Check size={18} /> ยืนยัน <ArrowRight size={18} /></>}
+              : <><Check size={18} /> Confirm <ArrowRight size={18} /></>}
           </button>
         </div>
       </div>
