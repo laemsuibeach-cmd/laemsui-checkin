@@ -13,7 +13,7 @@ if "%TOKEN%"=="" (
 
 if exist ".git\index.lock" del /f ".git\index.lock"
 git add -A
-git diff --staged --quiet && (echo Nothing to commit) || git commit -m "fix: preserve signature across canvas resize, fix confirm button"
+git diff --staged --quiet && (echo Nothing to commit) || git commit -m "feat: show activities PDF after check-in complete"
 
 git push https://laemsuibeach-cmd:%TOKEN%@github.com/laemsuibeach-cmd/laemsui-checkin.git main --force
 

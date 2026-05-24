@@ -20,6 +20,7 @@ export default function CompletePage() {
   const [progress, setProgress] = useState('')
   const [driveUrl, setDriveUrl] = useState('')
   const [error, setError]     = useState('')
+  const [showActivities, setShowActivities] = useState(false)
 
   const hasPdf      = !!sessionStorage.getItem(`pdf_original_${ref}`)
   const hasSigned   = !!sessionStorage.getItem(`pdf_signed_${ref}`)
@@ -108,6 +109,35 @@ export default function CompletePage() {
     }
   }
 
+  /* ── ACTIVITIES STATE ── */
+  if (status === 'success' && showActivities) {
+    return (
+      <div className="h-screen bg-white flex flex-col overflow-hidden">
+        <header className="bg-resort-teal text-white px-5 lg:px-8 py-3 flex-shrink-0 flex items-center justify-between">
+          <div>
+            <button onClick={() => setShowActivities(false)}
+                    className="flex items-center gap-2 text-teal-200 mb-0.5 text-sm">
+              ← กลับ
+            </button>
+            <h1 className="text-xl font-bold">กิจกรรม &amp; สิ่งอำนวยความสะดวก</h1>
+          </div>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/15
+                       hover:bg-white/25 text-white text-sm font-semibold transition-colors"
+          >
+            <Home size={16} /> หน้าหลัก
+          </button>
+        </header>
+        <iframe
+          src="/Laem Sui Beach — Activities (Print).pdf"
+          className="flex-1 w-full border-0"
+          title="Laemsui Beach — Activities & Facilities"
+        />
+      </div>
+    )
+  }
+
   /* ── SUCCESS STATE ── */
   if (status === 'success') {
     return (
@@ -125,6 +155,14 @@ export default function CompletePage() {
           <p className="text-gray-500 mb-8">เอกสารทั้งหมดอัปโหลดสำเร็จแล้ว</p>
 
           <div className="w-full space-y-3 max-w-sm">
+            {/* Activities brochure — แสดงให้ guest ดู */}
+            <button
+              onClick={() => setShowActivities(true)}
+              className="btn-primary w-full flex items-center justify-center gap-2 text-lg lg:py-5 lg:text-xl"
+            >
+              🏖️ แนะนำกิจกรรม &amp; สิ่งอำนวยความสะดวก
+            </button>
+
             {driveUrl && (
               <a href={driveUrl} target="_blank" rel="noopener noreferrer"
                  className="btn-secondary flex items-center justify-center gap-2 w-full">
@@ -133,9 +171,10 @@ export default function CompletePage() {
             )}
             <button
               onClick={() => router.push('/dashboard')}
-              className="btn-primary w-full flex items-center justify-center gap-2 text-lg"
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-xl
+                         font-semibold text-gray-500 hover:text-gray-700 transition-colors text-sm"
             >
-              <Home size={20} /> กลับหน้าหลัก
+              <Home size={18} /> กลับหน้าหลัก
             </button>
           </div>
         </div>
