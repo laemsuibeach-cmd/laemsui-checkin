@@ -13,7 +13,7 @@ if "%TOKEN%"=="" (
 
 if exist ".git\index.lock" del /f ".git\index.lock"
 git add -A
-git diff --staged --quiet && (echo Nothing to commit) || git commit -m "fix: signature canvas fills full screen with ResizeObserver"
+git diff --staged --quiet && (echo Nothing to commit) || git commit -m "feat: auto-generate PDPA consent certificate page in signed PDF"
 
 git push https://laemsuibeach-cmd:%TOKEN%@github.com/laemsuibeach-cmd/laemsui-checkin.git main --force
 
