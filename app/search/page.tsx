@@ -52,7 +52,7 @@ export default function SearchPage() {
               placeholder="ชื่อ Guest, Booking Ref, เลขห้อง..."
               value={query}
               onChange={e => setQuery(e.target.value)}
-              className="input-ipad pl-10"
+              className="input-ipad !pl-11"
               autoCapitalize="none"
             />
           </div>

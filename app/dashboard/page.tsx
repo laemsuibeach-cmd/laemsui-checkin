@@ -188,7 +188,7 @@ export default function DashboardPage() {
               placeholder="ค้นหาชื่อ, Booking Ref, ห้อง..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="input-ipad pl-10"
+              className="input-ipad !pl-11"
             />
           </div>
           <button
