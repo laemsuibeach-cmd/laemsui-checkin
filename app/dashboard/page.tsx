@@ -97,7 +97,7 @@ export default function DashboardPage() {
       <header className="relative h-44 lg:h-52 overflow-hidden">
         {/* Background photo */}
         <Image
-          src="/laemsui-resort.jpg"
+          src="/DSC02439.JPEG"
           alt="Laemsui Beach Resort"
           fill
           className="object-cover object-center"
