@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import {
   ArrowLeft, Calendar, Filter, FileCheck, FileX, Clock,
   BedDouble, ExternalLink, Upload, RefreshCw, User,
+  Trash2, CheckSquare, Square, X,
 } from 'lucide-react'
 
 const today = () => new Date().toISOString().split('T')[0]
@@ -242,7 +243,11 @@ export default function HistoryPage() {
             กำลังโหลด...
           </div>
         ) : tab === 'bookings' ? (
-          <BookingsTab bookings={bookings} onUpload={(ref) => router.push(`/checkin/${ref}/upload`)} />
+          <BookingsTab
+            bookings={bookings}
+            onUpload={(ref) => router.push(`/checkin/${ref}/upload`)}
+            onDeleted={() => loadBookings()}
+          />
         ) : (
           <AuditTab
             logs={auditLogs}
@@ -259,10 +264,49 @@ export default function HistoryPage() {
 function BookingsTab({
   bookings,
   onUpload,
+  onDeleted,
 }: {
   bookings: BookingWithDoc[]
   onUpload: (ref: string) => void
+  onDeleted: () => void
 }) {
+  const [selectMode, setSelectMode]         = useState(false)
+  const [selectedIds, setSelectedIds]       = useState<Set<string>>(new Set())
+  const [showConfirm, setShowConfirm]       = useState(false)
+  const [deleting, setDeleting]             = useState(false)
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    if (selectedIds.size === bookings.length) setSelectedIds(new Set())
+    else setSelectedIds(new Set(bookings.map(b => b.id)))
+  }
+
+  async function handleDelete() {
+    setDeleting(true)
+    const supabase = createClient()
+    const ids  = [...selectedIds]
+    const refs = bookings.filter(b => ids.includes(b.id)).map(b => b.booking_ref)
+
+    await supabase.from('guest_documents').delete().in('booking_ref', refs)
+    const { error } = await supabase.from('bookings').delete().in('id', ids)
+
+    if (error) { toast.error('ลบไม่สำเร็จ: ' + error.message); setDeleting(false); return }
+
+    toast.success(`ลบ ${ids.length} Booking เรียบร้อย`)
+    setShowConfirm(false)
+    setSelectMode(false)
+    setSelectedIds(new Set())
+    onDeleted()
+    setDeleting(false)
+  }
+
   if (bookings.length === 0) {
     return (
       <div className="text-center py-16 text-gray-400">
@@ -285,7 +329,6 @@ function BookingsTab({
     cancelled:   'ยกเลิก',
   }
 
-  // Group by check_in date
   const grouped = bookings.reduce<Record<string, BookingWithDoc[]>>((acc, b) => {
     const key = b.check_in
     if (!acc[key]) acc[key] = []
@@ -294,7 +337,47 @@ function BookingsTab({
   }, {})
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
+
+      {/* Select / delete toolbar */}
+      {!selectMode ? (
+        <div className="flex justify-end">
+          <button
+            onClick={() => setSelectMode(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium
+                       bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            <CheckSquare size={16} /> เลือกเพื่อลบ
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 bg-white rounded-xl border border-gray-200 px-4 py-2.5">
+          <button onClick={toggleAll} className="flex items-center gap-2 text-sm text-gray-600 font-medium">
+            {selectedIds.size === bookings.length && bookings.length > 0
+              ? <CheckSquare size={20} className="text-red-500" />
+              : <Square size={20} className="text-gray-400" />}
+            เลือกทั้งหมด ({bookings.length})
+          </button>
+          <div className="flex-1" />
+          {selectedIds.size > 0 && (
+            <button
+              onClick={() => setShowConfirm(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500
+                         text-white text-sm font-semibold hover:bg-red-600 transition-colors"
+            >
+              <Trash2 size={15} /> ลบ {selectedIds.size} รายการ
+            </button>
+          )}
+          <button
+            onClick={() => { setSelectMode(false); setSelectedIds(new Set()) }}
+            className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
+
+      {/* Grouped list */}
       {Object.entries(grouped).map(([date, group]) => (
         <div key={date}>
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">
@@ -305,27 +388,35 @@ function BookingsTab({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {group.map(b => {
               const doc = b.guest_documents?.[0]
-              const docDone = doc?.status === 'complete'
+              const docDone   = doc?.status === 'complete'
               const docInProg = doc?.status === 'in_progress'
+              const selected  = selectedIds.has(b.id)
 
               return (
                 <div key={b.id}
-                     className="bg-white rounded-2xl border border-gray-200
-                                shadow-sm p-4 flex gap-3 items-start">
-                  {/* Status dot */}
+                     onClick={() => selectMode && toggleSelect(b.id)}
+                     className={`bg-white rounded-2xl border shadow-sm p-4 flex gap-3 items-start
+                                 transition-all
+                                 ${selectMode ? 'cursor-pointer' : ''}
+                                 ${selected ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-200'}`}>
+
+                  {/* Checkbox or doc icon */}
                   <div className="flex-shrink-0 mt-1">
-                    {docDone
-                      ? <FileCheck size={20} className="text-green-500" />
-                      : docInProg
-                      ? <Clock size={20} className="text-blue-400" />
-                      : <FileX size={20} className="text-amber-400" />}
+                    {selectMode
+                      ? selected
+                        ? <CheckSquare size={20} className="text-red-500" />
+                        : <Square size={20} className="text-gray-300" />
+                      : docDone
+                        ? <FileCheck size={20} className="text-green-500" />
+                        : docInProg
+                        ? <Clock size={20} className="text-blue-400" />
+                        : <FileX size={20} className="text-amber-400" />}
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full
-                                        ${statusColors[b.status]}`}>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusColors[b.status]}`}>
                         {statusLabels[b.status]}
                       </span>
                       <span className="text-xs text-gray-400">{b.booking_ref}</span>
@@ -339,40 +430,68 @@ function BookingsTab({
                       <span>{formatDateTH(b.check_in)} → {formatDateTH(b.check_out)}</span>
                     </div>
                     {docDone && doc?.gdrive_folder_url && (
-                      <a
-                        href={doc.gdrive_folder_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={e => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 text-xs text-resort-teal
-                                   font-medium mt-2 hover:underline"
-                      >
+                      <a href={doc.gdrive_folder_url} target="_blank" rel="noopener noreferrer"
+                         onClick={e => e.stopPropagation()}
+                         className="inline-flex items-center gap-1 text-xs text-resort-teal font-medium mt-2 hover:underline">
                         <ExternalLink size={11} /> ดูไฟล์ใน Google Drive
                       </a>
                     )}
                     {doc?.finalized_at && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        อัปโหลดเสร็จ: {formatDateTimeTH(doc.finalized_at)}
-                      </p>
+                      <p className="text-xs text-gray-400 mt-1">อัปโหลดเสร็จ: {formatDateTimeTH(doc.finalized_at)}</p>
                     )}
                   </div>
 
-                  {/* Action */}
-                  <button
-                    onClick={() => onUpload(b.booking_ref)}
-                    className="flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl
-                               bg-resort-teal/10 text-resort-teal text-xs font-semibold
-                               hover:bg-resort-teal/20 active:scale-[0.97] transition-all"
-                  >
-                    <Upload size={14} />
-                    {docDone ? 'ดู/แก้ไข' : 'อัปโหลด'}
-                  </button>
+                  {/* Action button (hidden in select mode) */}
+                  {!selectMode && (
+                    <button
+                      onClick={() => onUpload(b.booking_ref)}
+                      className="flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl
+                                 bg-resort-teal/10 text-resort-teal text-xs font-semibold
+                                 hover:bg-resort-teal/20 active:scale-[0.97] transition-all"
+                    >
+                      <Upload size={14} />
+                      {docDone ? 'ดู/แก้ไข' : 'อัปโหลด'}
+                    </button>
+                  )}
                 </div>
               )
             })}
           </div>
         </div>
       ))}
+
+      {/* Delete confirm modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-5">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl">
+            <div className="flex items-center justify-center w-14 h-14 rounded-full bg-red-100 mx-auto mb-4">
+              <Trash2 size={28} className="text-red-500" />
+            </div>
+            <h2 className="text-xl font-bold text-center text-gray-800 mb-2">ยืนยันการลบ</h2>
+            <p className="text-center text-gray-500 text-sm mb-6">
+              ลบ <span className="font-bold text-gray-800">{selectedIds.size} Booking</span> นี้?<br />
+              ข้อมูลและเอกสารที่เกี่ยวข้องจะถูกลบถาวร
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 py-3 rounded-xl font-semibold text-gray-600
+                           bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 py-3 rounded-xl font-semibold text-white
+                           bg-red-500 hover:bg-red-600 disabled:opacity-60 transition-colors"
+              >
+                {deleting ? 'กำลังลบ...' : 'ลบเลย'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
