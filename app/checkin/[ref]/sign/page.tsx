@@ -27,8 +27,16 @@ export default function SignPage() {
   useEffect(() => { loadGuestName(); buildPdfUrl() }, [ref])
 
   useEffect(() => {
-    if (screen === 'sign' && canvasRef.current) {
-      requestAnimationFrame(() => initSignaturePad())
+    if (screen !== 'sign' || !canvasRef.current) return
+    let cleanup: (() => void) | undefined
+    const rafId = requestAnimationFrame(async () => {
+      cleanup = await initSignaturePad()
+    })
+    return () => {
+      cancelAnimationFrame(rafId)
+      cleanup?.()
+      setIsEmpty(true)
+      setSigPad(null)
     }
   }, [screen])
 
@@ -64,20 +72,30 @@ export default function SignPage() {
     const SignaturePad = (await import('signature_pad')).default
     const canvas    = canvasRef.current!
     const container = canvas.parentElement!
+    let pad: InstanceType<typeof SignaturePad> | null = null
 
     function resizeCanvas() {
       const ratio = Math.max(window.devicePixelRatio || 1, 1)
       const w = container.clientWidth
       const h = container.clientHeight
+
+      // Save signature data before resize so it's not lost
+      const savedData = pad?.toData()
+
       canvas.width  = w * ratio
       canvas.height = h * ratio
       canvas.style.width  = w + 'px'
       canvas.style.height = h + 'px'
       canvas.getContext('2d')!.scale(ratio, ratio)
       pad?.clear()
+
+      // Restore signature after resize
+      if (savedData && savedData.length > 0) {
+        pad?.fromData(savedData)
+      }
     }
 
-    const pad = new SignaturePad(canvas, {
+    pad = new SignaturePad(canvas, {
       backgroundColor: 'rgba(0,0,0,0)',
       penColor: 'rgb(0, 30, 100)',
       minWidth: 1.5, maxWidth: 4, velocityFilterWeight: 0.7,
@@ -85,11 +103,18 @@ export default function SignPage() {
     canvas.addEventListener('touchstart', e => e.preventDefault(), { passive: false })
     canvas.addEventListener('touchmove',  e => e.preventDefault(), { passive: false })
     pad.addEventListener('beginStroke', () => setIsEmpty(false))
+    pad.addEventListener('endStroke',   () => setIsEmpty(pad!.isEmpty()))
 
     resizeCanvas()
-    const ro = new ResizeObserver(() => { resizeCanvas(); setIsEmpty(true) })
+
+    const ro = new ResizeObserver(() => {
+      resizeCanvas()
+      // Update isEmpty based on actual pad content (not blindly reset to true)
+      setIsEmpty(pad?.isEmpty() ?? true)
+    })
     ro.observe(container)
     setSigPad(pad)
+
     return () => ro.disconnect()
   }
 
