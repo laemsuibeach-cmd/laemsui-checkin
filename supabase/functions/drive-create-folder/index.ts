@@ -1,5 +1,5 @@
 // Supabase Edge Function: drive-create-folder
-// สร้าง folder structure ใน Google Drive: Root/YYYY/MM-MON/BOOKING_REF/
+// สร้าง folder structure ใน Google Drive: Root/YYYY/MM-MON/DD/BOOKING_REF/
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
 const corsHeaders = {
@@ -112,15 +112,17 @@ serve(async (req) => {
 
     // Parse date
     const date = new Date(checkIn)
-    const year = date.getFullYear().toString()
+    const year  = date.getFullYear().toString()
     const months = ['01-JAN','02-FEB','03-MAR','04-APR','05-MAY','06-JUN',
                     '07-JUL','08-AUG','09-SEP','10-OCT','11-NOV','12-DEC']
     const month = months[date.getMonth()]
+    const day   = date.getDate().toString().padStart(2, '0')
 
-    // สร้าง folder hierarchy
-    const yearFolderId  = await findOrCreateFolder(accessToken, year, rootFolderId)
-    const monthFolderId = await findOrCreateFolder(accessToken, month, yearFolderId)
-    const bookingFolderId = await findOrCreateFolder(accessToken, bookingRef, monthFolderId)
+    // สร้าง folder hierarchy: Root / YYYY / MM-MON / DD / BOOKING_REF
+    const yearFolderId    = await findOrCreateFolder(accessToken, year,       rootFolderId)
+    const monthFolderId   = await findOrCreateFolder(accessToken, month,      yearFolderId)
+    const dayFolderId     = await findOrCreateFolder(accessToken, day,        monthFolderId)
+    const bookingFolderId = await findOrCreateFolder(accessToken, bookingRef, dayFolderId)
 
     const folderUrl = `https://drive.google.com/drive/folders/${bookingFolderId}`
 

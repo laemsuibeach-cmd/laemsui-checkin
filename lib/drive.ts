@@ -83,6 +83,9 @@ export async function finalizeGuestRecord(params: {
     return result.fileId
   }
 
+  // sanitize ชื่อแขกสำหรับใส่ในชื่อไฟล์ (แทน space ด้วย _ ลบอักขระพิเศษ)
+  const safeName = params.guestName.trim().replace(/\s+/g, '_').replace(/[^\w฀-๿]/g, '') || 'guest'
+
   // 2. อัปโหลดไฟล์ทั้งหมดพร้อมกัน (parallel) — เร็วกว่า sequential ~3x
   const [
     registrationFileId,
@@ -90,13 +93,13 @@ export async function finalizeGuestRecord(params: {
     passportFileId,
     idcardFileId,
   ] = await Promise.all([
-    uploadFile(params.registrationPdf, 'registration.pdf',        'application/pdf'),
-    uploadFile(params.signedPdf,       'signed-registration.pdf', 'application/pdf'),
+    uploadFile(params.registrationPdf, `registration_${safeName}.pdf`,        'application/pdf'),
+    uploadFile(params.signedPdf,       `signed-registration_${safeName}.pdf`, 'application/pdf'),
     params.passportPhoto
-      ? uploadFile(params.passportPhoto, 'passport.jpg', 'image/jpeg')
+      ? uploadFile(params.passportPhoto, `passport_${safeName}.jpg`, 'image/jpeg')
       : Promise.resolve(null),
     params.idcardPhoto
-      ? uploadFile(params.idcardPhoto, 'idcard.jpg', 'image/jpeg')
+      ? uploadFile(params.idcardPhoto, `idcard_${safeName}.jpg`, 'image/jpeg')
       : Promise.resolve(null),
   ])
 
