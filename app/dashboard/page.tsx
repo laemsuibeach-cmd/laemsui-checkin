@@ -526,17 +526,19 @@ function NewBookingModal({ defaultDate, onClose, onCreated }: {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.booking_ref || !form.guest_name || !form.check_out) {
+    // Trim whitespace จาก booking_ref และ guest_name ก่อน save
+    const cleanForm = { ...form, booking_ref: form.booking_ref.trim(), guest_name: form.guest_name.trim() }
+    if (!cleanForm.booking_ref || !cleanForm.guest_name || !cleanForm.check_out) {
       toast.error('กรุณากรอกข้อมูลที่จำเป็น'); return
     }
     setLoading(true)
     const supabase = createClient()
-    const { error } = await supabase.from('bookings').insert(form)
+    const { error } = await supabase.from('bookings').insert(cleanForm)
     if (error) {
       toast.error('เพิ่ม Booking ไม่สำเร็จ: ' + error.message)
       setLoading(false); return
     }
-    await logAudit('create_booking', form.booking_ref, { guestName: form.guest_name })
+    await logAudit('create_booking', cleanForm.booking_ref, { guestName: cleanForm.guest_name })
     toast.success('เพิ่ม Booking สำเร็จ')
     onCreated()
   }
