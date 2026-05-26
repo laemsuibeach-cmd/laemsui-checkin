@@ -83,19 +83,24 @@ export async function finalizeGuestRecord(params: {
     return result.fileId
   }
 
-  // 2. อัปโหลดไฟล์ทีละตัว
-  const registrationFileId       = await uploadFile(params.registrationPdf, 'registration.pdf',        'application/pdf')
-  const signedRegistrationFileId = await uploadFile(params.signedPdf,       'signed-registration.pdf', 'application/pdf')
+  // 2. อัปโหลดไฟล์ทั้งหมดพร้อมกัน (parallel) — เร็วกว่า sequential ~3x
+  const [
+    registrationFileId,
+    signedRegistrationFileId,
+    passportFileId,
+    idcardFileId,
+  ] = await Promise.all([
+    uploadFile(params.registrationPdf, 'registration.pdf',        'application/pdf'),
+    uploadFile(params.signedPdf,       'signed-registration.pdf', 'application/pdf'),
+    params.passportPhoto
+      ? uploadFile(params.passportPhoto, 'passport.jpg', 'image/jpeg')
+      : Promise.resolve(null),
+    params.idcardPhoto
+      ? uploadFile(params.idcardPhoto, 'idcard.jpg', 'image/jpeg')
+      : Promise.resolve(null),
+  ])
 
-  const passportFileId = params.passportPhoto
-    ? await uploadFile(params.passportPhoto, 'passport.jpg', 'image/jpeg')
-    : null
-
-  const idcardFileId = params.idcardPhoto
-    ? await uploadFile(params.idcardPhoto, 'idcard.jpg', 'image/jpeg')
-    : null
-
-  // 3. อัปโหลด metadata.json
+  // 3. อัปโหลด metadata.json (ต้องรอ file IDs ข้างบนก่อน)
   const metadata = {
     bookingRef, guestName: params.guestName, checkIn,
     staffName: params.staffName, uploadedAt: new Date().toISOString(),
