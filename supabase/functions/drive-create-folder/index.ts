@@ -65,7 +65,7 @@ async function findOrCreateFolder(
 ): Promise<string> {
   // ค้นหา folder ก่อน (ป้องกัน duplicate)
   const searchRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=name='${name}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)`,
+    `https://www.googleapis.com/drive/v3/files?q=name='${name}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   )
   const searchData = await searchRes.json()
@@ -75,7 +75,7 @@ async function findOrCreateFolder(
   }
 
   // สร้าง folder ใหม่
-  const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+  const createRes = await fetch('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,

@@ -1,6 +1,6 @@
 /**
  * drive.ts — uploads guest documents to Google Drive via Supabase Edge Functions
- * Edge Functions: drive-create-folder, drive-upload
+ * Uses a Shared Drive (LaemsuiBeachSharedrive) so service account has storage quota
  * Folder structure: Root / YYYY / MM-MON / BOOKING_REF /
  */
 import { createClient } from './supabase'
@@ -42,7 +42,7 @@ async function callEdgeFunction(fnName: string, body: object): Promise<any> {
   return data
 }
 
-// อัปโหลดทุกไฟล์ของ guest record ไปยัง Google Drive
+// อัปโหลดทุกไฟล์ของ guest record ไปยัง Google Shared Drive
 export async function finalizeGuestRecord(params: {
   bookingRef: string
   checkIn: string
@@ -65,18 +65,14 @@ export async function finalizeGuestRecord(params: {
 }> {
   const { bookingRef, checkIn } = params
 
-  // 1. สร้าง folder hierarchy ใน Drive
+  // 1. สร้าง folder hierarchy ใน Shared Drive
   const { folderId, folderUrl } = await callEdgeFunction('drive-create-folder', {
     bookingRef,
     checkIn,
   })
 
   // helper: แปลง Blob เป็น base64 แล้วอัปโหลด
-  async function uploadFile(
-    blob: Blob,
-    fileName: string,
-    mimeType: string
-  ): Promise<string> {
+  async function uploadFile(blob: Blob, fileName: string, mimeType: string): Promise<string> {
     const base64 = await fileToBase64(blob)
     const result = await callEdgeFunction('drive-upload', {
       folderId,
@@ -101,19 +97,12 @@ export async function finalizeGuestRecord(params: {
 
   // 3. อัปโหลด metadata.json
   const metadata = {
-    bookingRef,
-    guestName: params.guestName,
-    checkIn,
-    staffName: params.staffName,
-    uploadedAt: new Date().toISOString(),
-    storage: 'google-drive',
-    folderId,
-    folderUrl,
+    bookingRef, guestName: params.guestName, checkIn,
+    staffName: params.staffName, uploadedAt: new Date().toISOString(),
+    storage: 'google-drive-shared', folderId, folderUrl,
     files: {
-      registration:       registrationFileId,
-      signedRegistration: signedRegistrationFileId,
-      passport:           passportFileId,
-      idcard:             idcardFileId,
+      registration: registrationFileId, signedRegistration: signedRegistrationFileId,
+      passport: passportFileId, idcard: idcardFileId,
     },
     system: 'Laemsui Resort Check-in v1.0',
   }
@@ -123,12 +112,6 @@ export async function finalizeGuestRecord(params: {
   return {
     folderId,
     folderUrl,
-    files: {
-      registrationFileId,
-      signedRegistrationFileId,
-      passportFileId,
-      idcardFileId,
-      metadataFileId,
-    },
+    files: { registrationFileId, signedRegistrationFileId, passportFileId, idcardFileId, metadataFileId },
   }
 }
