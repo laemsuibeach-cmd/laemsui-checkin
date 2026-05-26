@@ -1,13 +1,14 @@
 /**
- * drive.ts — now uses Supabase Storage instead of Google Drive
- * Bucket: guest-documents (private, authenticated access only)
- * Path:   {year}/{month-shortname}/{bookingRef}/{filename}
+ * drive.ts — uploads guest documents to Google Drive via Supabase Edge Functions
+ * Edge Functions: drive-create-folder, drive-upload
+ * Folder structure: Root / YYYY / MM-MON / BOOKING_REF /
  */
 import { createClient } from './supabase'
 
-const BUCKET = 'guest-documents'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// แปลง File/Blob เป็น base64 string (ยังคงใช้ใน sign page)
+// แปลง File/Blob เป็น base64 string
 export async function fileToBase64(file: File | Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -20,44 +21,28 @@ export async function fileToBase64(file: File | Blob): Promise<string> {
   })
 }
 
-// สร้าง path prefix สำหรับ booking นี้
-function storagePath(checkIn: string, bookingRef: string, filename: string): string {
-  const year  = checkIn.slice(0, 4)
-  const month = new Date(checkIn).toLocaleString('en', { month: 'short' }).toUpperCase()
-  return `${year}/${month}/${bookingRef}/${filename}`
-}
-
-// อัปโหลดไฟล์เดี่ยวเข้า Supabase Storage
-export async function uploadToStorage(
-  path: string,
-  file: File | Blob,
-  mimeType: string
-): Promise<{ path: string; url: string }> {
+// เรียก Edge Function พร้อม auth header
+async function callEdgeFunction(fnName: string, body: object): Promise<any> {
   const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token ?? SUPABASE_ANON_KEY
 
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(path, file, {
-      contentType: mimeType,
-      upsert: true,
-    })
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/${fnName}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify(body),
+  })
 
-  if (error) throw new Error(`Storage upload failed: ${error.message}`)
-
-  // สร้าง signed URL อายุ 7 วัน (สำหรับ private bucket)
-  const { data: signedData, error: signErr } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(path, 60 * 60 * 24 * 7)
-
-  if (signErr || !signedData?.signedUrl) {
-    // Fallback: return path only
-    return { path, url: '' }
-  }
-
-  return { path, url: signedData.signedUrl }
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || `Edge Function ${fnName} failed (${res.status})`)
+  return data
 }
 
-// อัปโหลดทุกไฟล์ของ guest record
+// อัปโหลดทุกไฟล์ของ guest record ไปยัง Google Drive
 export async function finalizeGuestRecord(params: {
   bookingRef: string
   checkIn: string
@@ -80,77 +65,70 @@ export async function finalizeGuestRecord(params: {
 }> {
   const { bookingRef, checkIn } = params
 
-  // Upload registration PDF
-  const reg = await uploadToStorage(
-    storagePath(checkIn, bookingRef, 'registration.pdf'),
-    params.registrationPdf,
-    'application/pdf'
-  )
+  // 1. สร้าง folder hierarchy ใน Drive
+  const { folderId, folderUrl } = await callEdgeFunction('drive-create-folder', {
+    bookingRef,
+    checkIn,
+  })
 
-  // Upload signed PDF
-  const signed = await uploadToStorage(
-    storagePath(checkIn, bookingRef, 'signed-registration.pdf'),
-    params.signedPdf,
-    'application/pdf'
-  )
+  // helper: แปลง Blob เป็น base64 แล้วอัปโหลด
+  async function uploadFile(
+    blob: Blob,
+    fileName: string,
+    mimeType: string
+  ): Promise<string> {
+    const base64 = await fileToBase64(blob)
+    const result = await callEdgeFunction('drive-upload', {
+      folderId,
+      fileName,
+      fileBase64: base64,
+      mimeType,
+    })
+    return result.fileId
+  }
 
-  // Upload passport (if any)
-  const passport = params.passportPhoto
-    ? await uploadToStorage(
-        storagePath(checkIn, bookingRef, 'passport.jpg'),
-        params.passportPhoto,
-        'image/jpeg'
-      )
+  // 2. อัปโหลดไฟล์ทีละตัว
+  const registrationFileId       = await uploadFile(params.registrationPdf, 'registration.pdf',        'application/pdf')
+  const signedRegistrationFileId = await uploadFile(params.signedPdf,       'signed-registration.pdf', 'application/pdf')
+
+  const passportFileId = params.passportPhoto
+    ? await uploadFile(params.passportPhoto, 'passport.jpg', 'image/jpeg')
     : null
 
-  // Upload ID card (if any)
-  const idcard = params.idcardPhoto
-    ? await uploadToStorage(
-        storagePath(checkIn, bookingRef, 'idcard.jpg'),
-        params.idcardPhoto,
-        'image/jpeg'
-      )
+  const idcardFileId = params.idcardPhoto
+    ? await uploadFile(params.idcardPhoto, 'idcard.jpg', 'image/jpeg')
     : null
 
-  // Upload metadata.json
+  // 3. อัปโหลด metadata.json
   const metadata = {
     bookingRef,
     guestName: params.guestName,
     checkIn,
     staffName: params.staffName,
     uploadedAt: new Date().toISOString(),
-    storage: 'supabase',
-    bucket: BUCKET,
+    storage: 'google-drive',
+    folderId,
+    folderUrl,
     files: {
-      registration:      reg.path,
-      signedRegistration: signed.path,
-      passport:          passport?.path ?? null,
-      idcard:            idcard?.path   ?? null,
+      registration:       registrationFileId,
+      signedRegistration: signedRegistrationFileId,
+      passport:           passportFileId,
+      idcard:             idcardFileId,
     },
     system: 'Laemsui Resort Check-in v1.0',
   }
-
   const metaBlob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' })
-  const meta = await uploadToStorage(
-    storagePath(checkIn, bookingRef, 'metadata.json'),
-    metaBlob,
-    'application/json'
-  )
-
-  // folderUrl = signed URL ของ signed PDF (สิ่งที่พนักงานอยากดูบ่อยที่สุด)
-  const year  = checkIn.slice(0, 4)
-  const month = new Date(checkIn).toLocaleString('en', { month: 'short' }).toUpperCase()
-  const folderPath = `${year}/${month}/${bookingRef}`
+  const metadataFileId = await uploadFile(metaBlob, 'metadata.json', 'application/json')
 
   return {
-    folderId:  folderPath,
-    folderUrl: signed.url || reg.url,   // signed URL ของ PDF ที่เซ็นแล้ว
+    folderId,
+    folderUrl,
     files: {
-      registrationFileId:        reg.path,
-      signedRegistrationFileId:  signed.path,
-      passportFileId:            passport?.path  ?? null,
-      idcardFileId:              idcard?.path    ?? null,
-      metadataFileId:            meta.path,
+      registrationFileId,
+      signedRegistrationFileId,
+      passportFileId,
+      idcardFileId,
+      metadataFileId,
     },
   }
 }
