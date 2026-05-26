@@ -52,8 +52,7 @@ export default function CompletePage() {
     setStatus('uploading'); setError('')
     try {
       setProgress('กำลังเตรียมไฟล์...')
-      const originalBase64 = sessionStorage.getItem(`pdf_original_${ref}`)!
-      const signedBase64   = sessionStorage.getItem(`pdf_signed_${ref}`)!
+      const signedBase64 = sessionStorage.getItem(`pdf_signed_${ref}`)!
       const passportBase64 = sessionStorage.getItem(`passport_${ref}`)
       const idcardBase64   = sessionStorage.getItem(`idcard_${ref}`)
 
@@ -66,10 +65,9 @@ export default function CompletePage() {
       const result = await finalizeGuestRecord({
         bookingRef: ref,
         checkIn: booking.check_in,
-        registrationPdf: base64ToBlob(originalBase64, 'application/pdf'),
-        signedPdf:       base64ToBlob(signedBase64,   'application/pdf'),
-        passportPhoto:   passportBase64 ? base64ToFile(passportBase64, 'passport.jpg', 'image/jpeg') : undefined,
-        idcardPhoto:     idcardBase64   ? base64ToFile(idcardBase64,   'idcard.jpg',   'image/jpeg') : undefined,
+        signedPdf:     base64ToBlob(signedBase64, 'application/pdf'),
+        passportPhoto: passportBase64 ? base64ToFile(passportBase64, 'passport.jpg', 'image/jpeg') : undefined,
+        idcardPhoto:   idcardBase64   ? base64ToFile(idcardBase64,   'idcard.jpg',   'image/jpeg') : undefined,
         guestName: booking.guest_name,
         staffName: staffData?.name || 'Staff',
       })
@@ -78,7 +76,7 @@ export default function CompletePage() {
       await supabase.from('guest_documents').update({
         gdrive_folder_id:            result.folderId,
         gdrive_folder_url:           result.folderUrl,
-        registration_file_id:        result.files.registrationFileId,
+        registration_file_id:        null,
         signed_registration_file_id: result.files.signedRegistrationFileId,
         passport_file_id:            result.files.passportFileId,
         idcard_file_id:              result.files.idcardFileId,

@@ -46,7 +46,6 @@ async function callEdgeFunction(fnName: string, body: object): Promise<any> {
 export async function finalizeGuestRecord(params: {
   bookingRef: string
   checkIn: string
-  registrationPdf: Blob
   signedPdf: Blob
   passportPhoto?: File
   idcardPhoto?: File
@@ -56,7 +55,6 @@ export async function finalizeGuestRecord(params: {
   folderId: string
   folderUrl: string
   files: {
-    registrationFileId: string | null
     signedRegistrationFileId: string | null
     passportFileId: string | null
     idcardFileId: string | null
@@ -86,15 +84,13 @@ export async function finalizeGuestRecord(params: {
   // sanitize ชื่อแขกสำหรับใส่ในชื่อไฟล์ (แทน space ด้วย _ ลบอักขระพิเศษ)
   const safeName = params.guestName.trim().replace(/\s+/g, '_').replace(/[^\w฀-๿]/g, '') || 'guest'
 
-  // 2. อัปโหลดไฟล์ทั้งหมดพร้อมกัน (parallel) — เร็วกว่า sequential ~3x
+  // 2. อัปโหลดไฟล์ทั้งหมดพร้อมกัน (parallel) — เฉพาะไฟล์ที่เซ็นแล้วเท่านั้น
   const [
-    registrationFileId,
     signedRegistrationFileId,
     passportFileId,
     idcardFileId,
   ] = await Promise.all([
-    uploadFile(params.registrationPdf, `registration_${safeName}.pdf`,        'application/pdf'),
-    uploadFile(params.signedPdf,       `signed-registration_${safeName}.pdf`, 'application/pdf'),
+    uploadFile(params.signedPdf, `signed-registration_${safeName}.pdf`, 'application/pdf'),
     params.passportPhoto
       ? uploadFile(params.passportPhoto, `passport_${safeName}.jpg`, 'image/jpeg')
       : Promise.resolve(null),
@@ -109,7 +105,7 @@ export async function finalizeGuestRecord(params: {
     staffName: params.staffName, uploadedAt: new Date().toISOString(),
     storage: 'google-drive-shared', folderId, folderUrl,
     files: {
-      registration: registrationFileId, signedRegistration: signedRegistrationFileId,
+      signedRegistration: signedRegistrationFileId,
       passport: passportFileId, idcard: idcardFileId,
     },
     system: 'Laemsui Resort Check-in v1.0',
@@ -120,6 +116,6 @@ export async function finalizeGuestRecord(params: {
   return {
     folderId,
     folderUrl,
-    files: { registrationFileId, signedRegistrationFileId, passportFileId, idcardFileId, metadataFileId },
+    files: { signedRegistrationFileId, passportFileId, idcardFileId, metadataFileId },
   }
 }
