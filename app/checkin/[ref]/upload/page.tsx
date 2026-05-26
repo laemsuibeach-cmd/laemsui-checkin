@@ -6,16 +6,17 @@ import { logAudit } from '@/lib/audit'
 import { readPdfFile } from '@/lib/pdf'
 import CheckinSteps from '@/components/CheckinSteps'
 import toast from 'react-hot-toast'
-import { Upload, FileText, ArrowRight, ArrowLeft } from 'lucide-react'
+import { Upload, FileText, ArrowRight, ArrowLeft, CheckCircle, Tablet } from 'lucide-react'
 
 // Step 1: อัปโหลด Registration Form PDF จาก Little Hotelier
 export default function UploadFormPage() {
   const { ref } = useParams<{ ref: string }>()
   const router = useRouter()
   const [booking, setBooking] = useState<Booking | null>(null)
-  const [pdfFile, setPdfFile] = useState<File | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [pdfFile, setPdfFile]   = useState<File | null>(null)
+  const [loading, setLoading]   = useState(false)
   const [dragging, setDragging] = useState(false)
+  const [uploaded, setUploaded] = useState(false)
 
   useEffect(() => { loadBooking() }, [ref])
 
@@ -59,11 +60,57 @@ export default function UploadFormPage() {
           status: 'in_progress',
         }, { onConflict: 'booking_ref' })
       }
-      router.push(`/checkin/${ref}/sign`)
+      setUploaded(true)
     } catch (err: any) {
       toast.error(`Error: ${err?.message || String(err)}`)
       setLoading(false)
     }
+  }
+
+  /* ── HANDOVER SCREEN — หลังอัปโหลดสำเร็จ ── */
+  if (uploaded) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <header className="bg-green-600 text-white px-5 lg:px-8 py-3 lg:py-4">
+          <h1 className="text-xl font-bold">✅ อัปโหลดสำเร็จ</h1>
+          <p className="text-green-200 text-sm">{booking?.guest_name} · {ref}</p>
+        </header>
+        <CheckinSteps current={1} />
+
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-6">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
+            <CheckCircle size={48} className="text-green-500" />
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Registration Form พร้อมแล้ว</h2>
+            <p className="text-gray-500">ยื่น iPad ให้ลูกค้าเพื่อดู, เซ็นชื่อ และถ่ายรูปเอกสาร</p>
+          </div>
+
+          <div className="w-full max-w-sm space-y-3 mt-2">
+            {/* ปุ่มหลัก — ยื่นให้ลูกค้าเซ็นได้เลย */}
+            <button
+              onClick={() => router.push(`/checkin/${ref}/sign`)}
+              className="btn-primary w-full text-lg flex items-center justify-center gap-2 py-4"
+            >
+              <Tablet size={22} /> ยื่น iPad ให้ลูกค้าเซ็น
+            </button>
+
+            {/* ปุ่มรอง — กลับ dashboard ทำทีหลัง */}
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="btn-secondary w-full flex items-center justify-center gap-2"
+            >
+              <ArrowLeft size={18} /> กลับ Dashboard (ทำทีหลัง)
+            </button>
+          </div>
+
+          <p className="text-xs text-gray-400 mt-2">
+            ถ้ากลับ Dashboard ลูกค้าสามารถกลับมาเซ็นได้ภายหลังจาก Booking ที่ Dashboard
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (
