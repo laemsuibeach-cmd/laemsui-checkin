@@ -7,6 +7,7 @@ import { readPdfFile } from '@/lib/pdf'
 import CheckinSteps from '@/components/CheckinSteps'
 import toast from 'react-hot-toast'
 import { Upload, FileText, ArrowRight, ArrowLeft, CheckCircle, Tablet } from 'lucide-react'
+import CheckinNav from '@/components/CheckinNav'
 
 // Step 1: อัปโหลด Registration Form PDF จาก Little Hotelier
 export default function UploadFormPage() {
@@ -109,6 +110,7 @@ export default function UploadFormPage() {
             ถ้ากลับ Dashboard ลูกค้าสามารถกลับมาเซ็นได้ภายหลังจาก Booking ที่ Dashboard
           </p>
         </div>
+        <CheckinNav bookingRef={ref} current="upload" />
       </div>
     )
   }
@@ -200,6 +202,7 @@ export default function UploadFormPage() {
 
         </div>
       </div>
+      <CheckinNav bookingRef={ref} current="upload" />
     </div>
   )
 }

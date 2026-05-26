@@ -8,6 +8,7 @@ import { formatTimestamp } from '@/lib/utils'
 import CheckinSteps from '@/components/CheckinSteps'
 import toast from 'react-hot-toast'
 import { ArrowRight, ArrowLeft, RotateCcw, Check, FileText, ZoomIn, ZoomOut } from 'lucide-react'
+import CheckinNav from '@/components/CheckinNav'
 
 type Screen = 'preview' | 'pdpa' | 'sign'
 
@@ -211,6 +212,7 @@ export default function SignPage() {
             </button>
           </div>
         </div>
+        <CheckinNav bookingRef={ref} current="sign" />
       </div>
     )
   }
@@ -283,6 +285,7 @@ export default function SignPage() {
             </div>
           </div>
         </div>
+        <CheckinNav bookingRef={ref} current="sign" />
       </div>
     )
   }
@@ -336,6 +339,7 @@ export default function SignPage() {
           </button>
         </div>
       </div>
+      <CheckinNav bookingRef={ref} current="sign" />
     </div>
   )
 }

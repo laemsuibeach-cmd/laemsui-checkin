@@ -6,6 +6,7 @@ import CameraCapture from '@/components/CameraCapture'
 import CheckinSteps from '@/components/CheckinSteps'
 import toast from 'react-hot-toast'
 import { ArrowRight, ArrowLeft, SkipForward } from 'lucide-react'
+import CheckinNav from '@/components/CheckinNav'
 
 type DocType = 'passport' | 'idcard'
 
@@ -145,6 +146,7 @@ export default function DocumentPage() {
 
         </div>
       </div>
+      <CheckinNav bookingRef={ref} current="passport" />
     </div>
   )
 }

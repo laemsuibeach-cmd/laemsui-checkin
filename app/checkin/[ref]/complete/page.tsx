@@ -8,6 +8,7 @@ import { retentionExpiry } from '@/lib/utils'
 import CheckinSteps from '@/components/CheckinSteps'
 import toast from 'react-hot-toast'
 import { CheckCircle, ExternalLink, Home, AlertCircle, Upload, Cloud } from 'lucide-react'
+import CheckinNav from '@/components/CheckinNav'
 
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error'
 
@@ -286,6 +287,7 @@ export default function CompletePage() {
 
         </div>
       </div>
+      <CheckinNav bookingRef={ref} current="complete" />
     </div>
   )
 }

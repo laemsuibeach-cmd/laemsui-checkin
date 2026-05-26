@@ -15,7 +15,7 @@ if "%TOKEN%"=="" (
 )
 
 git add -A
-git diff --staged --quiet && (echo Nothing to commit) || git commit -m "chore: remove pdpa-cleanup Edge Function and GitHub Actions workflow"
+git diff --staged --quiet && (echo Nothing to commit) || git commit -m "feat: add CheckinNav to all checkin pages"
 
 git push https://laemsuibeach-cmd:%TOKEN%@github.com/laemsuibeach-cmd/laemsui-checkin.git main --force
 
