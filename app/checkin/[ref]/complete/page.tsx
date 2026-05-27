@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient, type Booking } from '@/lib/supabase'
 import { logAudit } from '@/lib/audit'
@@ -24,6 +24,7 @@ export default function CompletePage() {
   const [driveUrl, setDriveUrl]   = useState('')
   const [error, setError]         = useState('')
   const [failedFiles, setFailedFiles] = useState<string[]>([])
+  const retryCountRef = useRef(0)
 
   const hasPdf    = !!sessionStorage.getItem(`pdf_original_${ref}`)
   const hasSigned = !!sessionStorage.getItem(`pdf_signed_${ref}`)
@@ -42,6 +43,7 @@ export default function CompletePage() {
   useEffect(() => { loadBooking() }, [ref])
 
   async function loadBooking() {
+    setBookingError(false)  // #12 fix: reset ก่อน retry เสมอ
     try {
       const supabase = createClient()
       const { data, error } = await supabase
@@ -75,7 +77,14 @@ export default function CompletePage() {
 
     try {
       setProgress('กำลังเตรียมไฟล์...')
-      const signedBase64   = sessionStorage.getItem(`pdf_signed_${ref}`)!
+
+      // #13 fix: null check แทน ! — ถ้าหายระหว่าง session ให้แจ้ง error ชัดเจน
+      const signedBase64 = sessionStorage.getItem(`pdf_signed_${ref}`)
+      if (!signedBase64) {
+        toast.error('ไม่พบไฟล์ที่เซ็น — กรุณากลับไปเซ็นใหม่')
+        setStatus('idle')
+        return
+      }
       const passportBase64 = sessionStorage.getItem(`passport_${ref}`)
       const idcardBase64   = sessionStorage.getItem(`idcard_${ref}`)
 
@@ -104,7 +113,12 @@ export default function CompletePage() {
         staffName: staffData?.name || 'Staff',
       })
 
-      // #8 fix: แจ้งถ้ามีไฟล์ upload ไม่สำเร็จบางส่วน (แต่ไม่หยุด flow)
+      // #11 fix (Critical): ถ้า signed PDF upload ไม่สำเร็จ → หยุดทันที อย่าบันทึก checked_in
+      if (!result.files.signedRegistrationFileId) {
+        throw new Error('ไม่สามารถอัปโหลด Registration Form ที่เซ็นแล้วได้ — เอกสารสำคัญหาย กรุณาลองใหม่')
+      }
+
+      // #8 fix: แจ้งถ้ามีไฟล์อื่น upload ไม่สำเร็จบางส่วน (เอกสารรอง เช่น รูป passport)
       if (result.files.failedUploads.length > 0) {
         setFailedFiles(result.files.failedUploads)
       }
@@ -145,9 +159,10 @@ export default function CompletePage() {
       console.error('Upload failed:', err)
       setError(err.message || 'เกิดข้อผิดพลาดในการอัปโหลด')
       setStatus('error')
+      retryCountRef.current += 1  // #14 fix: นับจริง ไม่ hardcode
       await logAudit('upload_failed', ref, { error: err.message })
       await createClient().from('guest_documents').update({
-        status: 'upload_failed', last_error: err.message, upload_retry_count: 1,
+        status: 'upload_failed', last_error: err.message, upload_retry_count: retryCountRef.current,
       }).eq('booking_ref', ref)
     }
   }
@@ -305,37 +320,4 @@ export default function CompletePage() {
                 <>
                   <Upload size={22} />
                   {status === 'error' ? '🔄 ลองอีกครั้ง' : '☁️ อัปโหลดทุกอย่าง'}
-                </>
-              )}
-            </button>
-
-            {allReady && status === 'idle' && !bookingError && (
-              <p className="text-xs text-gray-400 text-center">
-                กดปุ่มด้านบนเพื่ออัปโหลดเอกสารทั้งหมดขึ้น Cloud
-              </p>
-            )}
-          </div>
-
-        </div>
-      </div>
-      <CheckinNav bookingRef={ref} current="complete" />
-    </div>
-  )
-}
-
-function FileStatusRow({
-  label, ready, required = true,
-}: { label: string; ready: boolean; required?: boolean }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-gray-700">{label}</span>
-      {ready ? (
-        <span className="text-green-500 font-semibold text-sm">✅ พร้อม</span>
-      ) : required ? (
-        <span className="text-red-400 font-semibold text-sm">❌ ขาด</span>
-      ) : (
-        <span className="text-gray-400 font-semibold text-sm">— ข้าม</span>
-      )}
-    </div>
-  )
-}
+            
