@@ -192,7 +192,6 @@ export default function HistoryPage() {
               <input
                 type="date"
                 value={startDate}
-                max={endDate}
                 onChange={e => setStartDate(e.target.value)}
                 className="h-9 px-3 rounded-lg border border-gray-200 text-sm
                            focus:outline-none focus:ring-2 focus:ring-resort-teal/30"
@@ -204,7 +203,6 @@ export default function HistoryPage() {
                 type="date"
                 value={endDate}
                 min={startDate}
-                max={today()}
                 onChange={e => setEndDate(e.target.value)}
                 className="h-9 px-3 rounded-lg border border-gray-200 text-sm
                            focus:outline-none focus:ring-2 focus:ring-resort-teal/30"
