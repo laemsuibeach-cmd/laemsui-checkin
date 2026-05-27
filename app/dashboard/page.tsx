@@ -367,7 +367,12 @@ export default function DashboardPage() {
                   onClick={() => {
                     if (selectMode) { toggleSelect(booking.id); return }
                     logAudit('view_booking', booking.booking_ref)
-                    router.push(`/checkin/${booking.booking_ref}/upload`)
+                    const hasPdf    = !!sessionStorage.getItem(`pdf_original_${booking.booking_ref}`)
+                    const hasSigned = !!sessionStorage.getItem(`pdf_signed_${booking.booking_ref}`)
+                    const dest = hasSigned ? 'complete'
+                               : hasPdf   ? 'sign'
+                               :            'upload'
+                    router.push(`/checkin/${booking.booking_ref}/${dest}`)
                   }}
                 />
               ))}
