@@ -19,16 +19,21 @@ function addDays(date: string, days: number) {
 }
 
 function formatDateTH(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('th-TH', {
-    day: 'numeric', month: 'short', year: '2-digit',
-  })
+  const d = new Date(dateStr)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yy = String(d.getFullYear()).slice(-2)
+  return `${dd}/${mm}/${yy}`
 }
 
 function formatDateTimeTH(dateStr: string) {
-  return new Date(dateStr).toLocaleString('th-TH', {
-    day: 'numeric', month: 'short', year: '2-digit',
-    hour: '2-digit', minute: '2-digit',
-  })
+  const d = new Date(dateStr)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yy = String(d.getFullYear()).slice(-2)
+  const hh = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  return `${dd}/${mm}/${yy} ${hh}:${min}`
 }
 
 const ACTION_LABELS: Record<string, string> = {

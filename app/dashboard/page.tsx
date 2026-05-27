@@ -30,9 +30,11 @@ function formatDateTH(dateStr: string) {
 }
 
 function formatDateShort(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('th-TH', {
-    day: 'numeric', month: 'short', year: '2-digit',
-  })
+  const d = new Date(dateStr)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yy = String(d.getFullYear()).slice(-2)
+  return `${dd}/${mm}/${yy}`
 }
 
 export default function DashboardPage() {
