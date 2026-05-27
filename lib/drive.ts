@@ -132,4 +132,6 @@ export async function finalizeGuestRecord(params: {
 export async function deleteDriveFolder(folderId: string): Promise<void> {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
-  const token = session?.access
+  const token = session?.access_token ?? SUPABASE_ANON_KEY
+  await callEdgeFunction('drive-delete-folder', { folderId }, token)
+}
