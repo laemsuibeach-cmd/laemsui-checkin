@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { createClient, type Booking } from '@/lib/supabase'
 import { logAudit } from '@/lib/audit'
 import { finalizeGuestRecord } from '@/lib/drive'
+import { getExtraPassports, clearExtraPassports } from '@/lib/passport-store'
 import { retentionExpiry } from '@/lib/utils'
 import CheckinSteps from '@/components/CheckinSteps'
 import toast from 'react-hot-toast'
@@ -63,12 +64,8 @@ export default function CompletePage() {
       const { data: staffData } = await supabase
         .from('staff').select('name').eq('id', user!.id).single()
 
-      // Collect extra passport photos from sessionStorage
-      const extraPassportFiles: File[] = []
-      for (let i = 1; i <= extraPassportCount; i++) {
-        const b64 = sessionStorage.getItem(`passport_extra_${i}_${ref}`)
-        if (b64) extraPassportFiles.push(base64ToFile(b64, `passport_extra_${i}.jpg`, 'image/jpeg'))
-      }
+      // Collect extra passport photos from in-memory store (avoids sessionStorage size limit)
+      const extraPassportFiles = getExtraPassports()
 
       const result = await finalizeGuestRecord({
         bookingRef: ref,
@@ -103,9 +100,9 @@ export default function CompletePage() {
 
       ;['pdf_original', 'pdf_signed', 'pdf_filename', 'signature', 'passport', 'idcard',
         'passport_name', 'idcard_name', 'passport_type', 'idcard_type', 'doc_type',
-        'passport_extra_count',
-        'passport_extra_1', 'passport_extra_2', 'passport_extra_3', 'passport_extra_4']
+        'passport_extra_count']
         .forEach(k => sessionStorage.removeItem(`${k}_${ref}`))
+      clearExtraPassports()
 
       setDriveUrl(result.folderUrl)
       setStatus('success')
@@ -271,3 +268,4 @@ function FileStatusRow({
     </div>
   )
 }
+                                                                                                                                                                                

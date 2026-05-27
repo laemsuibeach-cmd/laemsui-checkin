@@ -7,6 +7,7 @@ import CheckinSteps from '@/components/CheckinSteps'
 import toast from 'react-hot-toast'
 import { ArrowRight, ArrowLeft, SkipForward, Plus, X } from 'lucide-react'
 import CheckinNav from '@/components/CheckinNav'
+import { setExtraPassports, clearExtraPassports } from '@/lib/passport-store'
 
 type DocType = 'passport' | 'idcard'
 
@@ -56,7 +57,7 @@ export default function DocumentPage() {
 
     clearDocKeys()
 
-    // Save main document
+    // Save main document to sessionStorage (single file, within quota)
     const mainBase64 = await fileToBase64Promise(docFile)
     const key = docType === 'passport' ? 'passport' : 'idcard'
     sessionStorage.setItem(`${key}_${ref}`,      mainBase64)
@@ -64,15 +65,14 @@ export default function DocumentPage() {
     sessionStorage.setItem(`${key}_type_${ref}`, docFile.type)
     sessionStorage.setItem(`doc_type_${ref}`,    docType)
 
-    // Save extra passports (only for passport type)
+    // Save extra passports to in-memory store (avoids sessionStorage 5MB size limit)
     if (docType === 'passport') {
       const filled = extraPassports.filter(Boolean) as File[]
-      for (let i = 0; i < filled.length; i++) {
-        const b64 = await fileToBase64Promise(filled[i])
-        sessionStorage.setItem(`passport_extra_${i + 1}_${ref}`, b64)
-      }
+      setExtraPassports(filled)
+      // Store only the count in sessionStorage (tiny string, no size issue)
       sessionStorage.setItem(`passport_extra_count_${ref}`, String(filled.length))
     } else {
+      clearExtraPassports()
       sessionStorage.setItem(`passport_extra_count_${ref}`, '0')
     }
 
@@ -249,11 +249,4 @@ export default function DocumentPage() {
             <p className="text-xs text-gray-400 text-center">
               รูปเอกสารเป็นตัวเลือก สามารถข้ามได้
             </p>
-          </div>
-
-        </div>
-      </div>
-      <CheckinNav bookingRef={ref} current="passport" />
-    </div>
-  )
-}
+         
