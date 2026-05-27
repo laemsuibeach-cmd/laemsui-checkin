@@ -443,8 +443,8 @@ function BookingCard({ booking, selectMode, selected, onSelect, onClick }: {
   onClick: () => void
 }) {
   const doc = booking.guest_documents?.[0]
-  const docComplete   = doc?.status === 'complete'
-  const docInProgress = doc?.status === 'in_progress'
+  const docComplete   = doc?.status === 'complete' || booking.status === 'checked_in'
+  const docInProgress = !docComplete && (doc?.status === 'in_progress' || !!doc?.form_uploaded_at)
 
   const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
     pending:     { bg: 'bg-amber-100',  text: 'text-amber-700',  label: 'รอ Check-in' },

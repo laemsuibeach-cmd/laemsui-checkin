@@ -74,7 +74,10 @@ export default function CompletePage() {
       })
 
       setProgress('กำลังบันทึกข้อมูล...')
-      await supabase.from('guest_documents').update({
+      const { data: { user } } = await supabase.auth.getUser()
+      await supabase.from('guest_documents').upsert({
+        booking_ref:                 ref,
+        staff_id:                    user!.id,
         gdrive_folder_id:            result.folderId,
         gdrive_folder_url:           result.folderUrl,
         registration_file_id:        null,
@@ -86,7 +89,7 @@ export default function CompletePage() {
         uploaded_at:                 new Date().toISOString(),
         retention_expires_at:        retentionExpiry(booking.check_out),
         status:                      'complete',
-      }).eq('booking_ref', ref)
+      }, { onConflict: 'booking_ref' })
 
       await supabase.from('bookings').update({ status: 'checked_in' }).eq('booking_ref', ref)
       await logAudit('upload_success', ref, { folderId: result.folderId, folderUrl: result.folderUrl })
