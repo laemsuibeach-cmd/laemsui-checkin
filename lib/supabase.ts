@@ -80,5 +80,9 @@ export type BookingWithDoc = Booking & {
     gdrive_folder_url: string | null
     finalized_at: string | null
     uploaded_at: string | null
+    form_uploaded_at: string | null
+    signed_at: string | null
+    passport_file_id: string | null
+    idcard_file_id: string | null
   }>
 }
