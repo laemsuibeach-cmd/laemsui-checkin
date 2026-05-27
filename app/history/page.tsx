@@ -203,7 +203,7 @@ export default function HistoryPage() {
                   type="date"
                   value={startDate}
                   onChange={e => setStartDate(e.target.value)}
-                  className="absolute inset-0 opacity-0 w-full cursor-pointer"
+                  className="absolute inset-0 opacity-0 w-full cursor-pointer z-10"
                 />
               </div>
             </div>
@@ -219,7 +219,7 @@ export default function HistoryPage() {
                   value={endDate}
                   min={startDate}
                   onChange={e => setEndDate(e.target.value)}
-                  className="absolute inset-0 opacity-0 w-full cursor-pointer"
+                  className="absolute inset-0 opacity-0 w-full cursor-pointer z-10"
                 />
               </div>
             </div>
