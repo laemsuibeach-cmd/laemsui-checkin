@@ -227,13 +227,17 @@ export default function DashboardPage() {
 
           <div className="flex-1 flex items-center justify-center gap-3">
             <CalendarDays size={16} className="text-brand-red flex-shrink-0" />
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={e => setSelectedDate(e.target.value)}
-              className="text-center font-semibold text-gray-800 bg-transparent
-                         focus:outline-none text-base cursor-pointer"
-            />
+            <div className="relative flex items-center">
+              <span className="font-semibold text-gray-800 text-base select-none pointer-events-none">
+                {formatDateShort(selectedDate)}
+              </span>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={e => setSelectedDate(e.target.value)}
+                className="absolute inset-0 opacity-0 w-full cursor-pointer"
+              />
+            </div>
             {!isToday && (
               <button
                 onClick={() => setSelectedDate(today())}

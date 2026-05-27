@@ -194,24 +194,34 @@ export default function HistoryPage() {
             <div className="flex items-center gap-2">
               <Calendar size={15} className="text-gray-400" />
               <span className="text-sm text-gray-500">จาก</span>
-              <input
-                type="date"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="h-9 px-3 rounded-lg border border-gray-200 text-sm
-                           focus:outline-none focus:ring-2 focus:ring-resort-teal/30"
-              />
+              <div className="relative">
+                <div className="h-9 px-3 rounded-lg border border-gray-200 text-sm
+                                flex items-center font-medium text-gray-700 bg-white min-w-[90px]">
+                  {formatDateTH(startDate)}
+                </div>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  className="absolute inset-0 opacity-0 w-full cursor-pointer"
+                />
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-500">ถึง</span>
-              <input
-                type="date"
-                value={endDate}
-                min={startDate}
-                onChange={e => setEndDate(e.target.value)}
-                className="h-9 px-3 rounded-lg border border-gray-200 text-sm
-                           focus:outline-none focus:ring-2 focus:ring-resort-teal/30"
-              />
+              <div className="relative">
+                <div className="h-9 px-3 rounded-lg border border-gray-200 text-sm
+                                flex items-center font-medium text-gray-700 bg-white min-w-[90px]">
+                  {formatDateTH(endDate)}
+                </div>
+                <input
+                  type="date"
+                  value={endDate}
+                  min={startDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  className="absolute inset-0 opacity-0 w-full cursor-pointer"
+                />
+              </div>
             </div>
           </div>
         </div>
