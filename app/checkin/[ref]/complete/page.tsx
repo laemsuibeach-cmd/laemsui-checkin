@@ -4,7 +4,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { createClient, type Booking } from '@/lib/supabase'
 import { logAudit } from '@/lib/audit'
 import { finalizeGuestRecord } from '@/lib/drive'
-import { getExtraPassports, clearExtraPassports } from '@/lib/passport-store'
+import { useCheckinContext } from '../layout'
 import { retentionExpiry } from '@/lib/utils'
 import CheckinSteps from '@/components/CheckinSteps'
 import toast from 'react-hot-toast'
@@ -17,6 +17,7 @@ type UploadStatus = 'idle' | 'uploading' | 'success' | 'error'
 export default function CompletePage() {
   const { ref } = useParams<{ ref: string }>()
   const router = useRouter()
+  const { extraPassports: ctxExtraPassports, clearExtraPassports } = useCheckinContext()
   const [booking, setBooking] = useState<Booking | null>(null)
   const [status, setStatus]   = useState<UploadStatus>('idle')
   const [progress, setProgress] = useState('')
@@ -64,8 +65,8 @@ export default function CompletePage() {
       const { data: staffData } = await supabase
         .from('staff').select('name').eq('id', user!.id).single()
 
-      // Collect extra passport photos from in-memory store (avoids sessionStorage size limit)
-      const extraPassportFiles = getExtraPassports()
+      // Collect extra passport photos from React Context (layout-level state)
+      const extraPassportFiles = ctxExtraPassports
 
       const result = await finalizeGuestRecord({
         bookingRef: ref,
@@ -268,3 +269,4 @@ function FileStatusRow({
     </div>
   )
 }
+                                                                                                                                        

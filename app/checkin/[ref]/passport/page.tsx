@@ -7,7 +7,7 @@ import CheckinSteps from '@/components/CheckinSteps'
 import toast from 'react-hot-toast'
 import { ArrowRight, ArrowLeft, SkipForward, Plus, X } from 'lucide-react'
 import CheckinNav from '@/components/CheckinNav'
-import { setExtraPassports, clearExtraPassports } from '@/lib/passport-store'
+import { useCheckinContext } from '../layout'
 
 type DocType = 'passport' | 'idcard'
 
@@ -15,27 +15,28 @@ type DocType = 'passport' | 'idcard'
 export default function DocumentPage() {
   const { ref } = useParams<{ ref: string }>()
   const router = useRouter()
+  const { setExtraPassports, clearExtraPassports } = useCheckinContext()
   const [docType, setDocType]           = useState<DocType>('passport')
   const [docFile, setDocFile]           = useState<File | null>(null)
   // Extra passports for additional foreign guests (up to 4 more, 5 total)
-  const [extraPassports, setExtraPassports] = useState<(File | null)[]>([])
+  const [extraPassports, setExtraPassportsLocal] = useState<(File | null)[]>([])
 
   function handleTypeChange(type: DocType) {
     setDocType(type)
     setDocFile(null)
-    setExtraPassports([])
+    setExtraPassportsLocal([])
   }
 
   function addExtraSlot() {
-    if (extraPassports.length < 4) setExtraPassports(prev => [...prev, null])
+    if (extraPassports.length < 4) setExtraPassportsLocal(prev => [...prev, null])
   }
 
   function removeExtraSlot(i: number) {
-    setExtraPassports(prev => prev.filter((_, idx) => idx !== i))
+    setExtraPassportsLocal(prev => prev.filter((_, idx) => idx !== i))
   }
 
   function updateExtraPassport(i: number, file: File | null) {
-    setExtraPassports(prev => { const next = [...prev]; next[i] = file; return next })
+    setExtraPassportsLocal(prev => { const next = [...prev]; next[i] = file; return next })
   }
 
   function fileToBase64Promise(file: File): Promise<string> {
@@ -65,12 +66,11 @@ export default function DocumentPage() {
     sessionStorage.setItem(`${key}_type_${ref}`, docFile.type)
     sessionStorage.setItem(`doc_type_${ref}`,    docType)
 
-    // Save extra passports to in-memory store (avoids sessionStorage 5MB size limit)
+    // Save extra passports to React Context (layout-level state, survives page navigation)
     if (docType === 'passport') {
       const filled = extraPassports.filter(Boolean) as File[]
-      setExtraPassports(filled)
-      // Store only the count in sessionStorage (tiny string, no size issue)
-      sessionStorage.setItem(`passport_extra_count_${ref}`, String(filled.length))
+      setExtraPassports(filled)                                              // → Context
+      sessionStorage.setItem(`passport_extra_count_${ref}`, String(filled.length))  // count for display only
     } else {
       clearExtraPassports()
       sessionStorage.setItem(`passport_extra_count_${ref}`, '0')
@@ -247,13 +247,4 @@ export default function DocumentPage() {
             </button>
 
             <p className="text-xs text-gray-400 text-center">
-              รูปเอกสารเป็นตัวเลือก สามารถข้ามได้
-            </p>
-          </div>
-
-        </div>
-      </div>
-      <CheckinNav bookingRef={ref} current="passport" />
-    </div>
-  )
-}
+              รูปเอกสารเป็นตัว
