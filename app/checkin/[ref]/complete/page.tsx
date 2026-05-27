@@ -74,7 +74,6 @@ export default function CompletePage() {
       })
 
       setProgress('กำลังบันทึกข้อมูล...')
-      const { data: { user } } = await supabase.auth.getUser()
       await supabase.from('guest_documents').upsert({
         booking_ref:                 ref,
         staff_id:                    user!.id,
