@@ -552,6 +552,10 @@ function NewBookingModal({ defaultDate, onClose, onCreated }: {
     if (!cleanForm.booking_ref || !cleanForm.guest_name || !cleanForm.check_out) {
       toast.error('กรุณากรอกข้อมูลที่จำเป็น'); return
     }
+    // #18 fix: ตรวจว่า check_out หลัง check_in เสมอ
+    if (cleanForm.check_out <= cleanForm.check_in) {
+      toast.error('Check-out ต้องหลัง Check-in อย่างน้อย 1 วัน'); return
+    }
     setLoading(true)
     const supabase = createClient()
     const { error } = await supabase.from('bookings').insert(cleanForm)
@@ -626,12 +630,12 @@ function NewBookingModal({ defaultDate, onClose, onCreated }: {
             <div>
               <label className="block text-sm font-semibold text-gray-600 mb-1.5">ผู้ใหญ่</label>
               <input type="number" min={1} max={10} className="input-ipad"
-                     value={form.num_adults} onChange={e => update('num_adults', parseInt(e.target.value))} />
+                     value={form.num_adults} onChange={e => update('num_adults', parseInt(e.target.value) || 1)} />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-600 mb-1.5">เด็ก</label>
               <input type="number" min={0} max={10} className="input-ipad"
-                     value={form.num_children} onChange={e => update('num_children', parseInt(e.target.value))} />
+                     value={form.num_children} onChange={e => update('num_children', parseInt(e.target.value) || 0)} />
             </div>
           </div>
 
@@ -643,12 +647,4 @@ function NewBookingModal({ defaultDate, onClose, onCreated }: {
 
           <button type="submit" disabled={loading}
                   className="w-full py-4 rounded-xl font-bold text-white text-base
-                             bg-brand-red hover:bg-brand-red-dark disabled:opacity-60
-                             active:scale-[0.98] transition-all shadow-lg shadow-brand-red/20">
-            {loading ? 'กำลังบันทึก...' : '✅ บันทึก Booking'}
-          </button>
-        </form>
-      </div>
-    </div>
-  )
-}
+                             bg-brand-red hover:bg-brand-red-dark disabled:opacity-60

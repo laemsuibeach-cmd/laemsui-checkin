@@ -134,12 +134,15 @@ export default function SignPage() {
       sessionStorage.setItem(`pdf_signed_${ref}`, btoa(signedBinary))
       sessionStorage.setItem(`signature_${ref}`, signatureDataUrl)
 
+      // #19 fix: upsert แทน update — ป้องกัน silent fail ถ้าพนักงาน
+      //         เปิด URL sign โดยตรงโดยไม่ผ่านหน้า upload ก่อน
       const supabase = createClient()
-      await supabase.from('guest_documents').update({
+      await supabase.from('guest_documents').upsert({
+        booking_ref: ref,
         pdpa_consent: true,
         pdpa_consent_at: new Date().toISOString(),
         signed_at: new Date().toISOString(),
-      }).eq('booking_ref', ref)
+      }, { onConflict: 'booking_ref' })
 
       await logAudit('sign_pdf', ref)
       await logAudit('pdpa_consent', ref)
@@ -334,12 +337,4 @@ export default function SignPage() {
             className="btn-primary flex items-center gap-2 flex-[2] justify-center"
           >
             {loading
-              ? <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              : <><Check size={18} /> Confirm <ArrowRight size={18} /></>}
-          </button>
-        </div>
-      </div>
-      <CheckinNav bookingRef={ref} current="sign" />
-    </div>
-  )
-}
+              ? <div className="w-5 h-5 bord

@@ -320,37 +320,4 @@ export default function CompletePage() {
                 <>
                   <Upload size={22} />
                   {status === 'error' ? '🔄 ลองอีกครั้ง' : '☁️ อัปโหลดทุกอย่าง'}
-                </>
-              )}
-            </button>
-
-            {allReady && status === 'idle' && !bookingError && (
-              <p className="text-xs text-gray-400 text-center">
-                กดปุ่มด้านบนเพื่ออัปโหลดเอกสารทั้งหมดขึ้น Cloud
-              </p>
-            )}
-          </div>
-
-        </div>
-      </div>
-      <CheckinNav bookingRef={ref} current="complete" />
-    </div>
-  )
-}
-
-function FileStatusRow({
-  label, ready, required = true,
-}: { label: string; ready: boolean; required?: boolean }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-gray-700">{label}</span>
-      {ready ? (
-        <span className="text-green-500 font-semibold text-sm">✅ พร้อม</span>
-      ) : required ? (
-        <span className="text-red-400 font-semibold text-sm">❌ ขาด</span>
-      ) : (
-        <span className="text-gray-400 font-semibold text-sm">— ข้าม</span>
-      )}
-    </div>
-  )
-}
+            
