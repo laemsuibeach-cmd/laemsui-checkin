@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createClient, type BookingWithDoc } from '@/lib/supabase'
 import { logAudit } from '@/lib/audit'
+import { deleteDriveFolder } from '@/lib/drive'
 import { countNights } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import {
@@ -113,10 +114,18 @@ export default function DashboardPage() {
     const supabase = createClient()
     const ids = [...selectedIds]
 
-    // Delete related guest_documents first (FK constraint)
     const refs = bookings.filter(b => ids.includes(b.id)).map(b => b.booking_ref)
-    await supabase.from('guest_documents').delete().in('booking_ref', refs)
 
+    // ดึง gdrive_folder_id ก่อนลบ
+    const { data: docs } = await supabase
+      .from('guest_documents').select('gdrive_folder_id').in('booking_ref', refs)
+    const folderIds = (docs || []).map(d => d.gdrive_folder_id).filter(Boolean) as string[]
+
+    // ลบ Google Drive folders (ถ้ามี) — ทำ parallel ไม่ block ถ้า error
+    await Promise.allSettled(folderIds.map(id => deleteDriveFolder(id)))
+
+    // ลบ guest_documents ก่อน (FK constraint) แล้วค่อยลบ bookings
+    await supabase.from('guest_documents').delete().in('booking_ref', refs)
     const { error } = await supabase.from('bookings').delete().in('id', ids)
     if (error) {
       toast.error('ลบไม่สำเร็จ: ' + error.message)

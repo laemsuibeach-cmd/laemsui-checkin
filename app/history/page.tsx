@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient, type BookingWithDoc, type AuditLog } from '@/lib/supabase'
 import { countNights } from '@/lib/utils'
+import { deleteDriveFolder } from '@/lib/drive'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft, Calendar, Filter, FileCheck, FileX, Clock,
@@ -306,6 +307,14 @@ function BookingsTab({
     const supabase = createClient()
     const ids  = [...selectedIds]
     const refs = bookings.filter(b => ids.includes(b.id)).map(b => b.booking_ref)
+
+    // ดึง gdrive_folder_id ก่อนลบ
+    const { data: docs } = await supabase
+      .from('guest_documents').select('gdrive_folder_id').in('booking_ref', refs)
+    const folderIds = (docs || []).map((d: any) => d.gdrive_folder_id).filter(Boolean) as string[]
+
+    // ลบ Google Drive folders (ถ้ามี)
+    await Promise.allSettled(folderIds.map(id => deleteDriveFolder(id)))
 
     await supabase.from('guest_documents').delete().in('booking_ref', refs)
     const { error } = await supabase.from('bookings').delete().in('id', ids)

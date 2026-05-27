@@ -119,3 +119,8 @@ export async function finalizeGuestRecord(params: {
     files: { signedRegistrationFileId, passportFileId, idcardFileId, metadataFileId },
   }
 }
+
+// ลบ folder ใน Google Drive (เมื่อลบ booking)
+export async function deleteDriveFolder(folderId: string): Promise<void> {
+  await callEdgeFunction('drive-delete-folder', { folderId })
+}
