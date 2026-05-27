@@ -443,11 +443,8 @@ function BookingCard({ booking, selectMode, selected, onSelect, onClick }: {
   onClick: () => void
 }) {
   const doc = booking.guest_documents?.[0]
-  const docComplete = doc?.status === 'complete'
-
-  const hasForm    = !!doc?.form_uploaded_at
-  const hasSigned  = !!doc?.signed_at
-  const hasPhoto   = !!(doc?.passport_file_id || doc?.idcard_file_id)
+  const docComplete   = doc?.status === 'complete'
+  const docInProgress = doc?.status === 'in_progress'
 
   const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
     pending:     { bg: 'bg-amber-100',  text: 'text-amber-700',  label: 'รอ Check-in' },
@@ -490,46 +487,26 @@ function BookingCard({ booking, selectMode, selected, onSelect, onClick }: {
             <span>{booking.num_adults} ผู้ใหญ่{booking.num_children > 0 ? ` · ${booking.num_children} เด็ก` : ''}</span>
           </div>
 
-          {/* Doc checklist */}
-          <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-gray-50">
-            <DocChip done={hasForm}   label="📄 Form"  required />
-            <DocChip done={hasSigned} label="✍️ เซ็น"  required />
-            <DocChip done={hasPhoto}  label="📷 รูป"   required={false} />
-            {docComplete && (
-              <span className="ml-auto flex items-center gap-1 text-xs text-emerald-600 font-semibold">
-                <FileCheck size={11} /> ครบ
-              </span>
-            )}
-          </div>
         </div>
 
-        {!selectMode && (
-          <ChevronRight size={18} className="text-gray-200 group-hover:text-gray-400 transition-colors flex-shrink-0 mt-1" />
-        )}
+        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          {!selectMode && <ChevronRight size={18} className="text-gray-200 group-hover:text-gray-400 transition-colors" />}
+          {docComplete ? (
+            <span className="flex items-center gap-1 text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">
+              <FileCheck size={11} /> เอกสารครบ
+            </span>
+          ) : docInProgress ? (
+            <span className="flex items-center gap-1 text-xs text-blue-500 font-semibold bg-blue-50 px-2 py-0.5 rounded-full">
+              <Clock size={11} /> กำลังดำเนินการ
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-xs text-amber-500 font-semibold bg-amber-50 px-2 py-0.5 rounded-full">
+              <FileX size={11} /> ยังไม่อัปโหลด
+            </span>
+          )}
+        </div>
       </div>
     </button>
-  )
-}
-
-function DocChip({ done, label, required }: { done: boolean; label: string; required: boolean }) {
-  if (done) {
-    return (
-      <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-        ✓ {label}
-      </span>
-    )
-  }
-  if (!required) {
-    return (
-      <span className="flex items-center gap-1 text-xs font-medium text-gray-300 px-2 py-0.5">
-        ○ {label}
-      </span>
-    )
-  }
-  return (
-    <span className="flex items-center gap-1 text-xs font-semibold text-red-400 bg-red-50 px-2 py-0.5 rounded-full">
-      ✕ {label}
-    </span>
   )
 }
 
