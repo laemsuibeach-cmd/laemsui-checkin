@@ -2,31 +2,29 @@
  * drive.ts — uploads guest documents to Google Drive via Supabase Edge Functions
  * Uses a Shared Drive (LaemsuiBeachSharedrive) so service account has storage quota
  * Folder structure: Root / YYYY / MM-MON / BOOKING_REF /
+ *
+ * Speed optimisations:
+ *  1. Auth token fetched ONCE and reused across all parallel calls
+ *  2. ALL file uploads run in a single Promise.all (no sequential rounds)
+ *  3. metadata.json fired in background after main uploads return
  */
 import { createClient } from './supabase'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const SUPABASE_URL     = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 // แปลง File/Blob เป็น base64 string
 export async function fileToBase64(file: File | Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result as string
-      resolve(result.split(',')[1])
-    }
+    reader.onload  = () => resolve((reader.result as string).split(',')[1])
     reader.onerror = reject
     reader.readAsDataURL(file)
   })
 }
 
-// เรียก Edge Function พร้อม auth header
-async function callEdgeFunction(fnName: string, body: object): Promise<any> {
-  const supabase = createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  const token = session?.access_token ?? SUPABASE_ANON_KEY
-
+// เรียก Edge Function — รับ token ที่ fetch ล่วงหน้ามาแล้ว (ไม่ต้อง fetch ซ้ำทุกครั้ง)
+async function callEdgeFunction(fnName: string, body: object, token: string): Promise<any> {
   const res = await fetch(`${SUPABASE_URL}/functions/v1/${fnName}`, {
     method: 'POST',
     headers: {
@@ -36,7 +34,6 @@ async function callEdgeFunction(fnName: string, body: object): Promise<any> {
     },
     body: JSON.stringify(body),
   })
-
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || `Edge Function ${fnName} failed (${res.status})`)
   return data
@@ -49,7 +46,7 @@ export async function finalizeGuestRecord(params: {
   signedPdf: Blob
   passportPhoto?: File
   idcardPhoto?: File
-  extraPassportPhotos?: File[]   // แขกต่างชาติเพิ่มเติม (สูงสุด 4 รูป)
+  extraPassportPhotos?: File[]
   guestName: string
   staffName: string
 }): Promise<{
@@ -65,33 +62,26 @@ export async function finalizeGuestRecord(params: {
 }> {
   const { bookingRef, checkIn } = params
 
-  // 1. สร้าง folder hierarchy ใน Shared Drive
-  const { folderId, folderUrl } = await callEdgeFunction('drive-create-folder', {
-    bookingRef,
-    checkIn,
-  })
+  // 0. Fetch auth token ONCE — reused for every upload call
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token ?? SUPABASE_ANON_KEY
 
-  // helper: แปลง Blob เป็น base64 แล้วอัปโหลด
+  // helper: convert → upload (uses pre-fetched token)
   async function uploadFile(blob: Blob, fileName: string, mimeType: string): Promise<string> {
     const base64 = await fileToBase64(blob)
-    const result = await callEdgeFunction('drive-upload', {
-      folderId,
-      fileName,
-      fileBase64: base64,
-      mimeType,
-    })
+    const result = await callEdgeFunction('drive-upload', { folderId, fileName, fileBase64: base64, mimeType }, token)
     return result.fileId
   }
 
-  // sanitize ชื่อแขกสำหรับใส่ในชื่อไฟล์ (แทน space ด้วย _ ลบอักขระพิเศษ)
+  // 1. Create folder
+  const { folderId, folderUrl } = await callEdgeFunction('drive-create-folder', { bookingRef, checkIn }, token)
+
+  // sanitize ชื่อแขก
   const safeName = params.guestName.trim().replace(/\s+/g, '_').replace(/[^\w฀-๿]/g, '') || 'guest'
 
-  // 2. อัปโหลดไฟล์หลักพร้อมกัน (parallel)
-  const [
-    signedRegistrationFileId,
-    passportFileId,
-    idcardFileId,
-  ] = await Promise.all([
+  // 2. Upload ALL files in one parallel batch (signed PDF + photos + extras combined)
+  const uploadTasks: Promise<string | null>[] = [
     uploadFile(params.signedPdf, `signed-registration_${safeName}.pdf`, 'application/pdf'),
     params.passportPhoto
       ? uploadFile(params.passportPhoto, `passport_${safeName}.jpg`, 'image/jpeg')
@@ -99,18 +89,15 @@ export async function finalizeGuestRecord(params: {
     params.idcardPhoto
       ? uploadFile(params.idcardPhoto, `idcard_${safeName}.jpg`, 'image/jpeg')
       : Promise.resolve(null),
-  ])
+    ...(params.extraPassportPhotos?.map((photo, i) =>
+      uploadFile(photo, `passport_guest${i + 2}_${safeName}.jpg`, 'image/jpeg')
+    ) ?? []),
+  ]
 
-  // 3. อัปโหลด extra passports (แขกต่างชาติเพิ่มเติม) แบบ parallel ถ้ามี
-  const extraPassportFileIds: string[] = params.extraPassportPhotos?.length
-    ? await Promise.all(
-        params.extraPassportPhotos.map((photo, i) =>
-          uploadFile(photo, `passport_guest${i + 2}_${safeName}.jpg`, 'image/jpeg')
-        )
-      )
-    : []
+  const [signedRegistrationFileId, passportFileId, idcardFileId, ...extraPassportFileIds] =
+    await Promise.all(uploadTasks) as [string, string | null, string | null, ...string[]]
 
-  // 4. อัปโหลด metadata.json (ต้องรอ file IDs ข้างบนก่อน)
+  // 3. Fire metadata.json in background — user doesn't need to wait for this
   const metadata = {
     bookingRef, guestName: params.guestName, checkIn,
     staffName: params.staffName, uploadedAt: new Date().toISOString(),
@@ -125,7 +112,8 @@ export async function finalizeGuestRecord(params: {
     system: 'Laemsui Resort Check-in v1.0',
   }
   const metaBlob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' })
-  const metadataFileId = await uploadFile(metaBlob, 'metadata.json', 'application/json')
+  // Fire-and-forget — ไม่ block การ return
+  uploadFile(metaBlob, 'metadata.json', 'application/json').catch(console.warn)
 
   return {
     folderId,
@@ -134,13 +122,14 @@ export async function finalizeGuestRecord(params: {
       signedRegistrationFileId,
       passportFileId,
       idcardFileId,
-      metadataFileId,
-      extraPassportFileIds,
+      metadataFileId: null,   // uploaded in background
+      extraPassportFileIds: extraPassportFileIds.filter(Boolean) as string[],
     },
   }
 }
 
 // ลบ folder ใน Google Drive (เมื่อลบ booking)
 export async function deleteDriveFolder(folderId: string): Promise<void> {
-  await callEdgeFunction('drive-delete-folder', { folderId })
-}
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access

@@ -14,9 +14,4 @@ export function setExtraPassports(files: File[]) {
 
 export function getExtraPassports(): File[] {
   if (typeof window === 'undefined') return []
-  return window.__extraPassports ?? []
-}
-
-export function clearExtraPassports() {
-  if (typeof window !== 'undefined') window.__extraPassports = undefined
-}
+  retur

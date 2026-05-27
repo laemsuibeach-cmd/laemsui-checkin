@@ -247,13 +247,4 @@ export default function DocumentPage() {
             </button>
 
             <p className="text-xs text-gray-400 text-center">
-              รูปเอกสารเป็นตัวเลือก สามารถข้ามได้
-            </p>
-          </div>
-
-        </div>
-      </div>
-      <CheckinNav bookingRef={ref} current="passport" />
-    </div>
-  )
-}
+              รูปเอกสารเป็นตัว
