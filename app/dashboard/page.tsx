@@ -647,4 +647,12 @@ function NewBookingModal({ defaultDate, onClose, onCreated }: {
 
           <button type="submit" disabled={loading}
                   className="w-full py-4 rounded-xl font-bold text-white text-base
-                             bg-brand-red hover:bg-brand-red-dark disabled:opacity-60
+                             bg-brand-red hover:bg-brand-red-dark disabled:opacity-60
+                             active:scale-[0.98] transition-all shadow-lg shadow-brand-red/20">
+            {loading ? 'กำลังบันทึก...' : '✅ บันทึก Booking'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}

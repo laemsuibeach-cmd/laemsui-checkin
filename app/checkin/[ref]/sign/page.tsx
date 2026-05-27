@@ -337,4 +337,12 @@ export default function SignPage() {
             className="btn-primary flex items-center gap-2 flex-[2] justify-center"
           >
             {loading
-              ? <div className="w-5 h-5 bord
+              ? <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              : <><Check size={18} /> Confirm <ArrowRight size={18} /></>}
+          </button>
+        </div>
+      </div>
+      <CheckinNav bookingRef={ref} current="sign" />
+    </div>
+  )
+}
