@@ -49,6 +49,7 @@ export async function finalizeGuestRecord(params: {
   signedPdf: Blob
   passportPhoto?: File
   idcardPhoto?: File
+  extraPassportPhotos?: File[]   // แขกต่างชาติเพิ่มเติม (สูงสุด 4 รูป)
   guestName: string
   staffName: string
 }): Promise<{
@@ -59,6 +60,7 @@ export async function finalizeGuestRecord(params: {
     passportFileId: string | null
     idcardFileId: string | null
     metadataFileId: string | null
+    extraPassportFileIds: string[]
   }
 }> {
   const { bookingRef, checkIn } = params
@@ -84,7 +86,7 @@ export async function finalizeGuestRecord(params: {
   // sanitize ชื่อแขกสำหรับใส่ในชื่อไฟล์ (แทน space ด้วย _ ลบอักขระพิเศษ)
   const safeName = params.guestName.trim().replace(/\s+/g, '_').replace(/[^\w฀-๿]/g, '') || 'guest'
 
-  // 2. อัปโหลดไฟล์ทั้งหมดพร้อมกัน (parallel) — เฉพาะไฟล์ที่เซ็นแล้วเท่านั้น
+  // 2. อัปโหลดไฟล์หลักพร้อมกัน (parallel)
   const [
     signedRegistrationFileId,
     passportFileId,
@@ -99,14 +101,30 @@ export async function finalizeGuestRecord(params: {
       : Promise.resolve(null),
   ])
 
-  // 3. อัปโหลด metadata.json (ต้องรอ file IDs ข้างบนก่อน)
+  // 3. อัปโหลด extra passports (แขกต่างชาติเพิ่มเติม) ถ้ามี
+  const extraPassportFileIds: string[] = []
+  if (params.extraPassportPhotos && params.extraPassportPhotos.length > 0) {
+    for (let i = 0; i < params.extraPassportPhotos.length; i++) {
+      const fileId = await uploadFile(
+        params.extraPassportPhotos[i],
+        `passport_guest${i + 2}_${safeName}.jpg`,
+        'image/jpeg'
+      )
+      extraPassportFileIds.push(fileId)
+    }
+  }
+
+  // 4. อัปโหลด metadata.json (ต้องรอ file IDs ข้างบนก่อน)
   const metadata = {
     bookingRef, guestName: params.guestName, checkIn,
     staffName: params.staffName, uploadedAt: new Date().toISOString(),
     storage: 'google-drive-shared', folderId, folderUrl,
+    totalGuests: 1 + extraPassportFileIds.length,
     files: {
       signedRegistration: signedRegistrationFileId,
-      passport: passportFileId, idcard: idcardFileId,
+      passport: passportFileId,
+      idcard: idcardFileId,
+      extraPassports: extraPassportFileIds,
     },
     system: 'Laemsui Resort Check-in v1.0',
   }
@@ -116,7 +134,13 @@ export async function finalizeGuestRecord(params: {
   return {
     folderId,
     folderUrl,
-    files: { signedRegistrationFileId, passportFileId, idcardFileId, metadataFileId },
+    files: {
+      signedRegistrationFileId,
+      passportFileId,
+      idcardFileId,
+      metadataFileId,
+      extraPassportFileIds,
+    },
   }
 }
 

@@ -22,12 +22,13 @@ export default function CompletePage() {
   const [driveUrl, setDriveUrl] = useState('')
   const [error, setError]     = useState('')
 
-  const hasPdf      = !!sessionStorage.getItem(`pdf_original_${ref}`)
-  const hasSigned   = !!sessionStorage.getItem(`pdf_signed_${ref}`)
-  const hasPassport = !!sessionStorage.getItem(`passport_${ref}`)
-  const hasIdcard   = !!sessionStorage.getItem(`idcard_${ref}`)
-  const hasDoc      = hasPassport || hasIdcard
-  const allReady    = hasPdf && hasSigned  // รูปเอกสารเป็น optional
+  const hasPdf           = !!sessionStorage.getItem(`pdf_original_${ref}`)
+  const hasSigned        = !!sessionStorage.getItem(`pdf_signed_${ref}`)
+  const hasPassport      = !!sessionStorage.getItem(`passport_${ref}`)
+  const hasIdcard        = !!sessionStorage.getItem(`idcard_${ref}`)
+  const hasDoc           = hasPassport || hasIdcard
+  const extraPassportCount = parseInt(sessionStorage.getItem(`passport_extra_count_${ref}`) || '0')
+  const allReady         = hasPdf && hasSigned  // รูปเอกสารเป็น optional
 
   useEffect(() => { loadBooking() }, [ref])
 
@@ -62,12 +63,20 @@ export default function CompletePage() {
       const { data: staffData } = await supabase
         .from('staff').select('name').eq('id', user!.id).single()
 
+      // Collect extra passport photos from sessionStorage
+      const extraPassportFiles: File[] = []
+      for (let i = 1; i <= extraPassportCount; i++) {
+        const b64 = sessionStorage.getItem(`passport_extra_${i}_${ref}`)
+        if (b64) extraPassportFiles.push(base64ToFile(b64, `passport_extra_${i}.jpg`, 'image/jpeg'))
+      }
+
       const result = await finalizeGuestRecord({
         bookingRef: ref,
         checkIn: booking.check_in,
-        signedPdf:     base64ToBlob(signedBase64, 'application/pdf'),
-        passportPhoto: passportBase64 ? base64ToFile(passportBase64, 'passport.jpg', 'image/jpeg') : undefined,
-        idcardPhoto:   idcardBase64   ? base64ToFile(idcardBase64,   'idcard.jpg',   'image/jpeg') : undefined,
+        signedPdf:            base64ToBlob(signedBase64, 'application/pdf'),
+        passportPhoto:        passportBase64 ? base64ToFile(passportBase64, 'passport.jpg', 'image/jpeg') : undefined,
+        idcardPhoto:          idcardBase64   ? base64ToFile(idcardBase64,   'idcard.jpg',   'image/jpeg') : undefined,
+        extraPassportPhotos:  extraPassportFiles.length > 0 ? extraPassportFiles : undefined,
         guestName: booking.guest_name,
         staffName: staffData?.name || 'Staff',
       })
@@ -93,7 +102,9 @@ export default function CompletePage() {
       await logAudit('upload_success', ref, { folderId: result.folderId, folderUrl: result.folderUrl })
 
       ;['pdf_original', 'pdf_signed', 'pdf_filename', 'signature', 'passport', 'idcard',
-        'passport_name', 'idcard_name', 'passport_type', 'idcard_type', 'doc_type']
+        'passport_name', 'idcard_name', 'passport_type', 'idcard_type', 'doc_type',
+        'passport_extra_count',
+        'passport_extra_1', 'passport_extra_2', 'passport_extra_3', 'passport_extra_4']
         .forEach(k => sessionStorage.removeItem(`${k}_${ref}`))
 
       setDriveUrl(result.folderUrl)
@@ -145,7 +156,9 @@ export default function CompletePage() {
     )
   }
 
-  const docLabel = hasPassport ? '📷 Passport' : hasIdcard ? '🪪 บัตรประชาชน' : '📷 รูปเอกสาร'
+  const docLabel = hasPassport
+    ? `📷 Passport${extraPassportCount > 0 ? ` (+${extraPassportCount} แขกเพิ่ม)` : ''}`
+    : hasIdcard ? '🪪 บัตรประชาชน' : '📷 รูปเอกสาร'
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

@@ -5,7 +5,7 @@ import { logAudit } from '@/lib/audit'
 import CameraCapture from '@/components/CameraCapture'
 import CheckinSteps from '@/components/CheckinSteps'
 import toast from 'react-hot-toast'
-import { ArrowRight, ArrowLeft, SkipForward } from 'lucide-react'
+import { ArrowRight, ArrowLeft, SkipForward, Plus, X } from 'lucide-react'
 import CheckinNav from '@/components/CheckinNav'
 
 type DocType = 'passport' | 'idcard'
@@ -14,10 +14,37 @@ type DocType = 'passport' | 'idcard'
 export default function DocumentPage() {
   const { ref } = useParams<{ ref: string }>()
   const router = useRouter()
-  const [docType, setDocType] = useState<DocType>('passport')
-  const [docFile, setDocFile] = useState<File | null>(null)
+  const [docType, setDocType]           = useState<DocType>('passport')
+  const [docFile, setDocFile]           = useState<File | null>(null)
+  // Extra passports for additional foreign guests (up to 4 more, 5 total)
+  const [extraPassports, setExtraPassports] = useState<(File | null)[]>([])
 
-  function handleTypeChange(type: DocType) { setDocType(type); setDocFile(null) }
+  function handleTypeChange(type: DocType) {
+    setDocType(type)
+    setDocFile(null)
+    setExtraPassports([])
+  }
+
+  function addExtraSlot() {
+    if (extraPassports.length < 4) setExtraPassports(prev => [...prev, null])
+  }
+
+  function removeExtraSlot(i: number) {
+    setExtraPassports(prev => prev.filter((_, idx) => idx !== i))
+  }
+
+  function updateExtraPassport(i: number, file: File | null) {
+    setExtraPassports(prev => { const next = [...prev]; next[i] = file; return next })
+  }
+
+  function fileToBase64Promise(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve((reader.result as string).split(',')[1])
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
 
   async function handleNext() {
     if (!docFile) {
@@ -26,24 +53,39 @@ export default function DocumentPage() {
         : 'กรุณาถ่ายรูปบัตรประชาชนก่อน')
       return
     }
-    const reader = new FileReader()
-    reader.onload = async () => {
-      const base64 = (reader.result as string).split(',')[1]
-      clearDocKeys()
-      const key = docType === 'passport' ? 'passport' : 'idcard'
-      sessionStorage.setItem(`${key}_${ref}`,      base64)
-      sessionStorage.setItem(`${key}_name_${ref}`, docFile.name)
-      sessionStorage.setItem(`${key}_type_${ref}`, docFile.type)
-      sessionStorage.setItem(`doc_type_${ref}`,    docType)
-      await logAudit(docType === 'passport' ? 'capture_passport' : 'capture_idcard', ref)
-      router.push(`/checkin/${ref}/complete`)
+
+    clearDocKeys()
+
+    // Save main document
+    const mainBase64 = await fileToBase64Promise(docFile)
+    const key = docType === 'passport' ? 'passport' : 'idcard'
+    sessionStorage.setItem(`${key}_${ref}`,      mainBase64)
+    sessionStorage.setItem(`${key}_name_${ref}`, docFile.name)
+    sessionStorage.setItem(`${key}_type_${ref}`, docFile.type)
+    sessionStorage.setItem(`doc_type_${ref}`,    docType)
+
+    // Save extra passports (only for passport type)
+    if (docType === 'passport') {
+      const filled = extraPassports.filter(Boolean) as File[]
+      for (let i = 0; i < filled.length; i++) {
+        const b64 = await fileToBase64Promise(filled[i])
+        sessionStorage.setItem(`passport_extra_${i + 1}_${ref}`, b64)
+      }
+      sessionStorage.setItem(`passport_extra_count_${ref}`, String(filled.length))
+    } else {
+      sessionStorage.setItem(`passport_extra_count_${ref}`, '0')
     }
-    reader.readAsDataURL(docFile)
+
+    await logAudit(docType === 'passport' ? 'capture_passport' : 'capture_idcard', ref)
+    router.push(`/checkin/${ref}/complete`)
   }
 
   function clearDocKeys() {
     ['passport', 'passport_name', 'passport_type',
-     'idcard', 'idcard_name', 'idcard_type', 'doc_type']
+     'idcard', 'idcard_name', 'idcard_type', 'doc_type',
+     'passport_extra_count',
+     'passport_extra_1', 'passport_extra_2',
+     'passport_extra_3', 'passport_extra_4']
       .forEach(k => sessionStorage.removeItem(`${k}_${ref}`))
   }
 
@@ -52,6 +94,8 @@ export default function DocumentPage() {
   const tips = docType === 'passport'
     ? ['วางบนพื้นหรือโต๊ะสีเข้ม', 'ไม่มีแสงสะท้อน', 'ถ่ายให้เห็นครบทั้งหน้า']
     : ['ถ่ายด้านหน้าที่มีรูปและชื่อ', 'ให้เห็นครบทั้งบัตร', 'แสงพอดี ไม่มีเงา']
+
+  const filledExtras = extraPassports.filter(Boolean).length
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -72,8 +116,9 @@ export default function DocumentPage() {
       <div className="flex-1 p-5 lg:p-8 max-w-lg lg:max-w-5xl mx-auto w-full">
         <div className="lg:grid lg:grid-cols-2 lg:gap-8 lg:items-start">
 
-          {/* LEFT: Type toggle + Camera */}
+          {/* LEFT: Type toggle + Camera + Extra passports */}
           <div>
+            {/* Doc type toggle */}
             <div className="flex rounded-xl overflow-hidden border border-gray-200 mb-5">
               <button
                 onClick={() => handleTypeChange('passport')}
@@ -103,14 +148,76 @@ export default function DocumentPage() {
                 : 'ถ่ายบัตรประชาชน ให้เห็นรูปและข้อมูลครบถ้วนชัดเจน'}
             </p>
 
+            {/* Main document camera */}
             <CameraCapture
-              label={docType === 'passport' ? 'ถ่าย Passport' : 'ถ่าย บัตรประชาชน'}
+              label={docType === 'passport' ? 'ถ่าย Passport (แขกหลัก)' : 'ถ่าย บัตรประชาชน'}
               hint={docType === 'passport'
                 ? 'กล้องหลัง · ให้เห็นหน้าข้อมูลครบถ้วน'
                 : 'กล้องหลัง · ด้านหน้าบัตร'}
               onCapture={setDocFile}
               capturedFile={docFile}
             />
+
+            {/* ── Extra passports (foreign guests) ── */}
+            {docType === 'passport' && (
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="font-semibold text-gray-700 text-sm">
+                      🛂 แขกต่างชาติเพิ่มเติม
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      หากมีแขกหลายคน เพิ่มได้สูงสุด 5 คน
+                    </p>
+                  </div>
+                  {extraPassports.length < 4 && (
+                    <button
+                      onClick={addExtraSlot}
+                      className="flex items-center gap-1 bg-teal-50 text-resort-teal border border-teal-200
+                                 text-sm font-semibold px-3 py-1.5 rounded-lg hover:bg-teal-100 transition-colors"
+                    >
+                      <Plus size={15} /> เพิ่ม
+                    </button>
+                  )}
+                </div>
+
+                {extraPassports.length === 0 && (
+                  <p className="text-gray-400 text-xs text-center py-3 border border-dashed border-gray-200 rounded-xl">
+                    กด "+ เพิ่ม" หากมีแขกชาวต่างชาติมากกว่า 1 คน
+                  </p>
+                )}
+
+                <div className="space-y-4">
+                  {extraPassports.map((file, i) => (
+                    <div key={i} className="border border-gray-200 rounded-xl p-3 bg-white">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-semibold text-gray-700">
+                          แขกคนที่ {i + 2}
+                        </p>
+                        <button
+                          onClick={() => removeExtraSlot(i)}
+                          className="text-red-400 hover:text-red-600 transition-colors"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                      <CameraCapture
+                        label={`ถ่าย Passport แขกคนที่ ${i + 2}`}
+                        hint="กล้องหลัง · ให้เห็นหน้าข้อมูลครบถ้วน"
+                        onCapture={(f) => updateExtraPassport(i, f)}
+                        capturedFile={file}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {filledExtras > 0 && (
+                  <p className="text-xs text-teal-600 font-medium mt-2 text-center">
+                    ✅ ถ่ายแล้ว {filledExtras + 1} รูป ({filledExtras + 1} คน)
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* RIGHT: Tips + Buttons */}
